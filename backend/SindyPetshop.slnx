@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="SindyPetshop.Api/SindyPetshop.Api.csproj" />
+  <Project Path="SindyPetshop.Application/SindyPetshop.Application.csproj" />
+  <Project Path="SindyPetshop.Domain/SindyPetshop.Domain.csproj" />
+  <Project Path="SindyPetshop.Infrastructure/SindyPetshop.Infrastructure.csproj" />
+</Solution>
