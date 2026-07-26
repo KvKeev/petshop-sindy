@@ -12,10 +12,46 @@ public class SindyPetshopDbContext : DbContext
     public DbSet<Producto> Productos => Set<Producto>();
     public DbSet<VarianteProducto> VariantesProducto => Set<VarianteProducto>();
     public DbSet<HistorialStock> HistorialStock => Set<HistorialStock>();
+    public DbSet<Cliente> Clientes => Set<Cliente>();
+    public DbSet<Direccion> Direcciones => Set<Direccion>();
+    public DbSet<Pedido> Pedidos => Set<Pedido>();
+    public DbSet<DetallePedido> DetallesPedido => Set<DetallePedido>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        // --- Cliente ---
+modelBuilder.Entity<Cliente>(entity =>
+{
+    entity.HasIndex(c => c.Email).IsUnique(); // no puede haber dos clientes con el mismo email
+    entity.Property(c => c.Rol).HasConversion<string>();
+});
+
+        // --- Pedido ---
+        modelBuilder.Entity<Pedido>(entity =>
+        {
+            entity.Property(p => p.Estado).HasConversion<string>();
+            entity.Property(p => p.MetodoEntrega).HasConversion<string>();
+            entity.Property(p => p.Total).HasPrecision(10, 2);
+
+            // No borrar en cascada: si se borra una dirección, no queremos perder pedidos históricos
+            entity.HasOne(p => p.Direccion)
+                .WithMany()
+                .HasForeignKey(p => p.DireccionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // --- DetallePedido ---
+        modelBuilder.Entity<DetallePedido>(entity =>
+        {
+            entity.Property(d => d.PrecioUnitario).HasPrecision(10, 2);
+
+            entity.HasOne(d => d.Variante)
+                .WithMany(v => v.DetallesPedido)
+                .HasForeignKey(d => d.VarianteId)
+                .OnDelete(DeleteBehavior.Restrict); // no borrar una variante si tiene ventas históricas
+        });
+        
 
         // --- VarianteProducto ---
         modelBuilder.Entity<VarianteProducto>(entity =>

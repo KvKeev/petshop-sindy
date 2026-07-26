@@ -1,0 +1,37 @@
+using Microsoft.AspNetCore.Mvc;
+using SindyPetshop.Application.DTOs;
+using SindyPetshop.Application.Services;
+
+namespace SindyPetshop.Api.Controllers;
+
+[ApiController]
+[Route("api/v1/auth")]
+public class AuthController : ControllerBase
+{
+    private readonly AuthService _authService;
+
+    public AuthController(AuthService authService)
+    {
+        _authService = authService;
+    }
+
+    [HttpPost("registro")]
+    public async Task<IActionResult> Registro(RegistroDto dto)
+    {
+        var resultado = await _authService.RegistrarAsync(dto);
+        if (resultado is null)
+            return Conflict(new { mensaje = "El email ya está registrado" });
+
+        return Ok(resultado);
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login(LoginDto dto)
+    {
+        var resultado = await _authService.LoginAsync(dto);
+        if (resultado is null)
+            return Unauthorized(new { mensaje = "Credenciales inválidas" });
+
+        return Ok(resultado);
+    }
+}

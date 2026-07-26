@@ -27,4 +27,5 @@ public class VarianteProducto
     public int? CantidadFraccionable { get; set; }
 
     public ICollection<HistorialStock> Movimientos { get; set; } = new List<HistorialStock>();
+    public ICollection<DetallePedido> DetallesPedido { get; set; } = new List<DetallePedido>();
 }
