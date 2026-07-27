@@ -16,25 +16,30 @@ public class SindyPetshopDbContext : DbContext
     public DbSet<Direccion> Direcciones => Set<Direccion>();
     public DbSet<Pedido> Pedidos => Set<Pedido>();
     public DbSet<DetallePedido> DetallesPedido => Set<DetallePedido>();
+    public DbSet<Mascota> Mascotas => Set<Mascota>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         // --- Cliente ---
-modelBuilder.Entity<Cliente>(entity =>
-{
-    entity.HasIndex(c => c.Email).IsUnique(); // no puede haber dos clientes con el mismo email
-    entity.Property(c => c.Rol).HasConversion<string>();
-});
+        modelBuilder.Entity<Cliente>(entity =>
+        {
+            entity.HasIndex(c => c.Email).IsUnique(); // no puede haber dos clientes con el mismo email
+            entity.Property(c => c.Rol).HasConversion<string>();
+        });
+        modelBuilder.Entity<Mascota>(entity =>
+        {
+            entity.Property(m => m.Tipo).HasConversion<string>();
+        });
 
         // --- Pedido ---
         modelBuilder.Entity<Pedido>(entity =>
         {
             entity.Property(p => p.Estado).HasConversion<string>();
             entity.Property(p => p.MetodoEntrega).HasConversion<string>();
+            entity.Property(p => p.Origen).HasConversion<string>(); // <- nuevo
             entity.Property(p => p.Total).HasPrecision(10, 2);
 
-            // No borrar en cascada: si se borra una dirección, no queremos perder pedidos históricos
             entity.HasOne(p => p.Direccion)
                 .WithMany()
                 .HasForeignKey(p => p.DireccionId)
@@ -49,9 +54,14 @@ modelBuilder.Entity<Cliente>(entity =>
             entity.HasOne(d => d.Variante)
                 .WithMany(v => v.DetallesPedido)
                 .HasForeignKey(d => d.VarianteId)
-                .OnDelete(DeleteBehavior.Restrict); // no borrar una variante si tiene ventas históricas
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.Mascota) // <- nuevo
+                .WithMany(m => m.ComprasAsociadas)
+                .HasForeignKey(d => d.MascotaId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
-        
+
 
         // --- VarianteProducto ---
         modelBuilder.Entity<VarianteProducto>(entity =>

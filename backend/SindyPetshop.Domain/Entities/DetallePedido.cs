@@ -10,6 +10,10 @@ public class DetallePedido
     public int VarianteId { get; set; }
     public VarianteProducto? Variante { get; set; }
 
+    // Opcional: para qué mascota fue esta línea de compra (trazabilidad de "qué come cada mascota")
+    public int? MascotaId { get; set; }
+    public Mascota? Mascota { get; set; }
+
     public int Cantidad { get; set; }
-    public decimal PrecioUnitario { get; set; } // "foto" del precio al momento de la compra
+    public decimal PrecioUnitario { get; set; }
 }
