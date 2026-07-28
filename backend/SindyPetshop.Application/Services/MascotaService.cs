@@ -38,22 +38,30 @@ public class MascotaService
     }
 
     // Responde "¿qué come esta mascota?" con el historial real de compras
-    public async Task<MascotaConHistorialDto?> GetConHistorialAsync(int mascotaId)
-    {
-        var mascota = await _mascotaRepository.GetConHistorialComprasAsync(mascotaId);
-        if (mascota is null) return null;
+public async Task<(ResultadoConsulta Resultado, MascotaConHistorialDto? Dto)> GetConHistorialAsync(
+    int mascotaId, int clienteIdSolicitante, bool esAdmin)
+{
+    var mascota = await _mascotaRepository.GetConHistorialComprasAsync(mascotaId);
+    if (mascota is null)
+        return (ResultadoConsulta.NoEncontrada, null);
 
-        var historial = mascota.ComprasAsociadas
-            .OrderByDescending(d => d.Pedido!.Fecha)
-            .Select(d => new CompraMascotaDto(
-                d.Variante!.Producto!.Nombre,
-                $"{d.Variante.Atributo}: {d.Variante.Valor}",
-                d.Pedido!.Fecha,
-                d.Cantidad
-            ));
+    // Solo el dueño de la mascota o un Admin pueden ver su historial
+    if (mascota.ClienteId != clienteIdSolicitante && !esAdmin)
+        return (ResultadoConsulta.NoAutorizado, null);
 
-        return new MascotaConHistorialDto(
-            mascota.Id, mascota.Nombre, mascota.Tipo.ToString(), historial
-        );
-    }
+    var historial = mascota.ComprasAsociadas
+        .OrderByDescending(d => d.Pedido!.Fecha)
+        .Select(d => new CompraMascotaDto(
+            d.Variante!.Producto!.Nombre,
+            $"{d.Variante.Atributo}: {d.Variante.Valor}",
+            d.Pedido!.Fecha,
+            d.Cantidad
+        ));
+
+    var dto = new MascotaConHistorialDto(
+        mascota.Id, mascota.Nombre, mascota.Tipo.ToString(), historial
+    );
+
+    return (ResultadoConsulta.Ok, dto);
+}
 }

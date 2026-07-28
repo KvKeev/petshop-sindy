@@ -39,7 +39,12 @@ public class MascotasController : ControllerBase
         var resultado = await _mascotaService.CrearAsync(clienteId, dto);
 
         if (resultado is null)
-            return BadRequest(new { mensaje = "Tipo de mascota inválido. Valores permitidos: Perro, Gato, Ave, Otro" });
+            return BadRequest(
+                new
+                {
+                    mensaje = "Tipo de mascota inválido. Valores permitidos: Perro, Gato, Ave, Otro",
+                }
+            );
 
         return Ok(resultado);
     }
@@ -48,9 +53,16 @@ public class MascotasController : ControllerBase
     [HttpGet("{id}/historial")]
     public async Task<IActionResult> GetHistorial(int id)
     {
-        var resultado = await _mascotaService.GetConHistorialAsync(id);
-        if (resultado is null) return NotFound();
+        var clienteId = ObtenerClienteId();
+        var esAdmin = User.IsInRole("Admin");
 
-        return Ok(resultado);
+        var (resultado, dto) = await _mascotaService.GetConHistorialAsync(id, clienteId, esAdmin);
+
+        return resultado switch
+        {
+            ResultadoConsulta.NoEncontrada => NotFound(),
+            ResultadoConsulta.NoAutorizado => Forbid(),
+            _ => Ok(dto),
+        };
     }
 }
