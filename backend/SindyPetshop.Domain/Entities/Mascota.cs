@@ -5,9 +5,10 @@ public enum TipoMascota
     Perro,
     Gato,
     Ave,
+    Conejo,
+    Hamster,
     Otro
 }
-
 public class Mascota
 {
     public int Id { get; set; }

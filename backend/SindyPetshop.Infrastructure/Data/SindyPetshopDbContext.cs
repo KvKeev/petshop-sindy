@@ -37,7 +37,8 @@ public class SindyPetshopDbContext : DbContext
         {
             entity.Property(p => p.Estado).HasConversion<string>();
             entity.Property(p => p.MetodoEntrega).HasConversion<string>();
-            entity.Property(p => p.Origen).HasConversion<string>(); // <- nuevo
+            entity.Property(p => p.Origen).HasConversion<string>();
+            entity.Property(p => p.MetodoPago).HasConversion<string>(); // <- agregar esta línea
             entity.Property(p => p.Total).HasPrecision(10, 2);
 
             entity.HasOne(p => p.Direccion)
