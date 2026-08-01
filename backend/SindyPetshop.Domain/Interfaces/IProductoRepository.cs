@@ -11,4 +11,6 @@ public interface IProductoRepository : IRepository<Producto>
 
     // Trae el producto con sus variantes cargadas (para el detalle)
     Task<Producto?> GetConVariantesAsync(int id);
+    Task<VarianteProducto?> GetVarianteConProductoAsync(int varianteId);
+
 }

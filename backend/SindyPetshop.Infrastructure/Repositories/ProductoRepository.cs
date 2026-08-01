@@ -37,4 +37,11 @@ public class ProductoRepository : RepositoryBase<Producto>, IProductoRepository
             .Include(p => p.Variantes)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
+
+    public async Task<VarianteProducto?> GetVarianteConProductoAsync(int varianteId)
+    {
+        return await _context.VariantesProducto
+            .Include(v => v.Producto)
+            .FirstOrDefaultAsync(v => v.Id == varianteId);
+    }
 }
