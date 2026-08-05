@@ -24,4 +24,10 @@ public class MascotaRepository : RepositoryBase<Mascota>, IMascotaRepository
                 .ThenInclude(d => d.Pedido)
             .FirstOrDefaultAsync(m => m.Id == mascotaId);
     }
+    public async Task<Mascota?> GetConAlimentoFavoritoAsync(int mascotaId)
+    {
+        return await _dbSet
+            .Include(m => m.AlimentoFavoritoProducto)
+            .FirstOrDefaultAsync(m => m.Id == mascotaId);
+    }
 }

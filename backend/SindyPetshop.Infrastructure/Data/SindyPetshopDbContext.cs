@@ -30,6 +30,14 @@ public class SindyPetshopDbContext : DbContext
         modelBuilder.Entity<Mascota>(entity =>
         {
             entity.Property(m => m.Tipo).HasConversion<string>();
+
+            // Sin cascada: si el producto se da de baja, el alimento favorito queda "suelto"
+            // (vuelve a null), no se borra la mascota ni rompe nada.
+            entity
+                .HasOne(m => m.AlimentoFavoritoProducto)
+                .WithMany()
+                .HasForeignKey(m => m.AlimentoFavoritoProductoId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // --- Pedido ---
@@ -41,7 +49,8 @@ public class SindyPetshopDbContext : DbContext
             entity.Property(p => p.MetodoPago).HasConversion<string>();
             entity.Property(p => p.Total).HasPrecision(10, 2);
 
-            entity.HasOne(p => p.Direccion)
+            entity
+                .HasOne(p => p.Direccion)
                 .WithMany()
                 .HasForeignKey(p => p.DireccionId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -52,17 +61,18 @@ public class SindyPetshopDbContext : DbContext
         {
             entity.Property(d => d.PrecioUnitario).HasPrecision(10, 2);
 
-            entity.HasOne(d => d.Variante)
+            entity
+                .HasOne(d => d.Variante)
                 .WithMany(v => v.DetallesPedido)
                 .HasForeignKey(d => d.VarianteId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne(d => d.Mascota) // <- nuevo
+            entity
+                .HasOne(d => d.Mascota) // <- nuevo
                 .WithMany(m => m.ComprasAsociadas)
                 .HasForeignKey(d => d.MascotaId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
-
 
         // --- VarianteProducto ---
         modelBuilder.Entity<VarianteProducto>(entity =>
@@ -75,18 +85,18 @@ public class SindyPetshopDbContext : DbContext
 
             // Auto-referencia: una variante "origen" apunta a una variante "destino"
             // Sin cascada de borrado, para no arrastrar variantes relacionadas sin querer
-            entity.HasOne(v => v.VarianteDestino)
-                  .WithMany()
-                  .HasForeignKey(v => v.VarianteDestinoId)
-                  .OnDelete(DeleteBehavior.Restrict);
+            entity
+                .HasOne(v => v.VarianteDestino)
+                .WithMany()
+                .HasForeignKey(v => v.VarianteDestinoId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // --- HistorialStock ---
         modelBuilder.Entity<HistorialStock>(entity =>
         {
             // El enum se guarda como texto legible en vez de número (0, 1, 2...)
-            entity.Property(h => h.TipoMovimiento)
-                  .HasConversion<string>();
+            entity.Property(h => h.TipoMovimiento).HasConversion<string>();
         });
     }
 }

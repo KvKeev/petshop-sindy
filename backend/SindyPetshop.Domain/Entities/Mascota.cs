@@ -9,6 +9,7 @@ public enum TipoMascota
     Hamster,
     Otro
 }
+
 public class Mascota
 {
     public int Id { get; set; }
@@ -17,6 +18,14 @@ public class Mascota
 
     public int ClienteId { get; set; }
     public Cliente? Cliente { get; set; }
+
+    // Alimento favorito: elección curada por admin o dueño, NUNCA inferida de compras.
+    // No bloquea ni valida ventas — es puramente informativo.
+    public int? AlimentoFavoritoProductoId { get; set; }
+    public Producto? AlimentoFavoritoProducto { get; set; }
+    public string? AlimentoFavoritoDescripcion { get; set; }
+    public DateTime? AlimentoFavoritoActualizadoEn { get; set; }
+    public string? AlimentoFavoritoActualizadoPor { get; set; } // email de quién lo cargó/editó
 
     public ICollection<DetallePedido> ComprasAsociadas { get; set; } = new List<DetallePedido>();
 }

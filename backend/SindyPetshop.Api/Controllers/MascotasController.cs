@@ -24,6 +24,12 @@ public class MascotasController : ControllerBase
         return int.Parse(claim);
     }
 
+    private string ObtenerIdentificadorActor()
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? "desconocido";
+        return User.IsInRole("Admin") ? $"Admin ({email})" : email;
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetMisMascotas()
     {
@@ -39,17 +45,15 @@ public class MascotasController : ControllerBase
         var resultado = await _mascotaService.CrearAsync(clienteId, dto);
 
         if (resultado is null)
-            return BadRequest(
-                new
-                {
-                    mensaje = "Tipo de mascota inválido. Valores permitidos: Perro, Gato, Ave, Otro",
-                }
-            );
+            return BadRequest(new
+            {
+                mensaje = "Tipo de mascota inválido. Valores permitidos: Perro, Gato, Ave, Conejo, Hamster, Otro",
+            });
 
         return Ok(resultado);
     }
 
-    // GET /api/v1/mascotas/5/historial -> "¿qué come esta mascota?"
+    // GET /api/v1/mascotas/5/historial -> "¿qué come esta mascota?" (compras reales)
     [HttpGet("{id}/historial")]
     public async Task<IActionResult> GetHistorial(int id)
     {
@@ -63,6 +67,25 @@ public class MascotasController : ControllerBase
             ResultadoConsulta.NoEncontrada => NotFound(),
             ResultadoConsulta.NoAutorizado => Forbid(),
             _ => Ok(dto),
+        };
+    }
+
+    // PUT /api/v1/mascotas/5/alimento-favorito -> elección curada, admin o dueño
+    [HttpPut("{id}/alimento-favorito")]
+    public async Task<IActionResult> ActualizarAlimentoFavorito(int id, ActualizarAlimentoFavoritoDto dto)
+    {
+        var clienteId = ObtenerClienteId();
+        var esAdmin = User.IsInRole("Admin");
+        var actor = ObtenerIdentificadorActor();
+
+        var (resultado, detalle, mascota) = await _mascotaService.ActualizarAlimentoFavoritoAsync(
+            id, clienteId, esAdmin, dto, actor);
+
+        return resultado switch
+        {
+            ResultadoConsulta.NoEncontrada => NotFound(new { mensaje = detalle }),
+            ResultadoConsulta.NoAutorizado => Forbid(),
+            _ => Ok(mascota),
         };
     }
 }
