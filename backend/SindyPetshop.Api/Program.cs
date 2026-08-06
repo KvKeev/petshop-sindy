@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using SindyPetshop.Infrastructure.Services;
 using SindyPetshop.Api.BackgroundServices;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,6 +53,28 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddControllers();
+const string PoliticaLoginRateLimit = "LoginPolicy";
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy(PoliticaLoginRateLimit, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { mensaje = "Demasiados intentos de login. Esperá un minuto y probá de nuevo." },
+            cancellationToken);
+    };
+});
 
 var app = builder.Build();
 
@@ -68,6 +92,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(); // UI interactiva en /scalar/v1
 }
 
+app.UseRateLimiter();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

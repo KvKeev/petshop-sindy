@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SindyPetshop.Application.DTOs;
 using SindyPetshop.Application.Services;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace SindyPetshop.Api.Controllers;
 
@@ -26,6 +27,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("LoginPolicy")]
     public async Task<IActionResult> Login(LoginDto dto)
     {
         var resultado = await _authService.LoginAsync(dto);
