@@ -44,4 +44,24 @@ public class ProductoRepository : RepositoryBase<Producto>, IProductoRepository
             .Include(v => v.Producto)
             .FirstOrDefaultAsync(v => v.Id == varianteId);
     }
+    public async Task<(IEnumerable<Producto> Items, int Total)> GetPaginadoAdminAsync(
+        int pagina, int tamanioPagina, int? categoriaId = null)
+    {
+        var query = _dbSet.AsQueryable(); // sin filtrar por Activo: el admin necesita ver todo
+
+        if (categoriaId.HasValue)
+            query = query.Where(p => p.CategoriaId == categoriaId.Value);
+
+        var total = await query.CountAsync();
+
+        var items = await query
+            .Include(p => p.Categoria)
+            .Include(p => p.Variantes)
+            .OrderBy(p => p.Nombre)
+            .Skip((pagina - 1) * tamanioPagina)
+            .Take(tamanioPagina)
+            .ToListAsync();
+
+        return (items, total);
+    }
 }

@@ -12,5 +12,8 @@ public interface IProductoRepository : IRepository<Producto>
     // Trae el producto con sus variantes cargadas (para el detalle)
     Task<Producto?> GetConVariantesAsync(int id);
     Task<VarianteProducto?> GetVarianteConProductoAsync(int varianteId);
+    // Admin ve TODO (activos e inactivos) — a diferencia de GetPaginadoAsync, que es la vista pública
+    Task<(IEnumerable<Producto> Items, int Total)> GetPaginadoAdminAsync(
+        int pagina, int tamanioPagina, int? categoriaId = null);
 
 }
