@@ -5,7 +5,8 @@ public enum TipoMovimientoStock
     Venta,
     Fraccionamiento,
     AjusteManual,
-    CargaInicial
+    CargaInicial,
+    DevolucionCancelacion
 }
 
 public class HistorialStock

@@ -13,4 +13,8 @@ public interface IPedidoRepository : IRepository<Pedido>
 
     // Registra un movimiento de stock sin hacer SaveChanges (se guarda junto con el resto del pedido)
     void RegistrarMovimientoStock(HistorialStock movimiento);
+    // Listado para el panel admin, con filtros opcionales
+    Task<(IEnumerable<Pedido> Items, int Total)> GetListadoAdminAsync(
+        int pagina, int tamanioPagina, EstadoPedido? estado, DateTime? desde, DateTime? hasta,
+        int? clienteId, MetodoPago? metodoPago, MetodoEntrega? metodoEntrega);
 }

@@ -32,6 +32,7 @@ builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<PedidoService>();
 builder.Services.AddHostedService<LiberacionReservasBackgroundService>();
 builder.Services.AddScoped<AdminProductoService>();
+builder.Services.AddScoped<AdminPedidoService>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]!;
 builder.Services.AddAuthentication(options =>
