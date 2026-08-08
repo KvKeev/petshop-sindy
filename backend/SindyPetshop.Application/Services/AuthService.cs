@@ -1,4 +1,5 @@
 using SindyPetshop.Application.DTOs;
+using SindyPetshop.Application.Validaciones;
 using SindyPetshop.Domain.Entities;
 using SindyPetshop.Domain.Interfaces;
 
@@ -15,10 +16,13 @@ public class AuthService
         _tokenService = tokenService;
     }
 
-    public async Task<AuthResponseDto?> RegistrarAsync(RegistroDto dto)
+    public async Task<(ResultadoRegistro Resultado, AuthResponseDto? Dto)> RegistrarAsync(RegistroDto dto)
     {
+        if (!NombreValidator.EsValido(dto.Nombre))
+            return (ResultadoRegistro.NombreInvalido, null);
+
         var existente = await _clienteRepository.GetByEmailAsync(dto.Email);
-        if (existente is not null) return null; // el Controller decide qué código HTTP devolver
+        if (existente is not null) return (ResultadoRegistro.EmailDuplicado, null);
 
         var cliente = new Cliente
         {
@@ -32,7 +36,7 @@ public class AuthService
         await _clienteRepository.SaveChangesAsync();
 
         var token = _tokenService.GenerarToken(cliente);
-        return new AuthResponseDto(token, cliente.Nombre, cliente.Email, cliente.Rol.ToString());
+        return (ResultadoRegistro.Ok, new AuthResponseDto(token, cliente.Nombre, cliente.Email, cliente.Rol.ToString()));
     }
 
     public async Task<AuthResponseDto?> LoginAsync(LoginDto dto)

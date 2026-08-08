@@ -16,14 +16,17 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
-    [HttpPost("registro")]
+[HttpPost("registro")]
     public async Task<IActionResult> Registro(RegistroDto dto)
     {
-        var resultado = await _authService.RegistrarAsync(dto);
-        if (resultado is null)
-            return Conflict(new { mensaje = "El email ya está registrado" });
+        var (resultado, respuesta) = await _authService.RegistrarAsync(dto);
 
-        return Ok(resultado);
+        return resultado switch
+        {
+            ResultadoRegistro.NombreInvalido => BadRequest(new { mensaje = "El nombre solo puede contener letras, números y espacios" }),
+            ResultadoRegistro.EmailDuplicado => Conflict(new { mensaje = "El email ya está registrado" }),
+            _ => Ok(respuesta),
+        };
     }
 
     [HttpPost("login")]

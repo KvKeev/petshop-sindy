@@ -38,19 +38,21 @@ public class MascotasController : ControllerBase
         return Ok(mascotas);
     }
 
-    [HttpPost]
+[HttpPost]
     public async Task<IActionResult> Crear(CrearMascotaDto dto)
     {
         var clienteId = ObtenerClienteId();
-        var resultado = await _mascotaService.CrearAsync(clienteId, dto);
+        var (resultado, mascota) = await _mascotaService.CrearAsync(clienteId, dto);
 
-        if (resultado is null)
-            return BadRequest(new
+        return resultado switch
+        {
+            ResultadoCrearMascota.NombreInvalido => BadRequest(new { mensaje = "El nombre solo puede contener letras, números y espacios" }),
+            ResultadoCrearMascota.TipoInvalido => BadRequest(new
             {
                 mensaje = "Tipo de mascota inválido. Valores permitidos: Perro, Gato, Ave, Conejo, Hamster, Otro",
-            });
-
-        return Ok(resultado);
+            }),
+            _ => Ok(mascota),
+        };
     }
 
     // GET /api/v1/mascotas/5/historial -> "¿qué come esta mascota?" (compras reales)

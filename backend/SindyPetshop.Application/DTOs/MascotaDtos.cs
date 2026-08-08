@@ -33,3 +33,10 @@ public record MascotaConHistorialDto(
     string? AlimentoFavoritoActualizadoPor,
     IEnumerable<CompraMascotaDto> HistorialCompras
 );
+// distingue el motivo de fallo al crear mascota (antes solo existía tipo inválido)
+public enum ResultadoCrearMascota
+{
+    Ok,
+    TipoInvalido,
+    NombreInvalido
+}

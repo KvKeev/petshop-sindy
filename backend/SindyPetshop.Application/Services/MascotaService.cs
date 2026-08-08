@@ -1,6 +1,7 @@
 using SindyPetshop.Application.DTOs;
 using SindyPetshop.Domain.Entities;
 using SindyPetshop.Domain.Interfaces;
+using SindyPetshop.Application.Validaciones;
 
 namespace SindyPetshop.Application.Services;
 
@@ -21,10 +22,13 @@ public class MascotaService
         return mascotas.Select(MapearDto);
     }
 
-    public async Task<MascotaDto?> CrearAsync(int clienteId, CrearMascotaDto dto)
+public async Task<(ResultadoCrearMascota Resultado, MascotaDto? Dto)> CrearAsync(int clienteId, CrearMascotaDto dto)
     {
+        if (!NombreValidator.EsValido(dto.Nombre))
+            return (ResultadoCrearMascota.NombreInvalido, null);
+
         if (!Enum.TryParse<TipoMascota>(dto.Tipo, ignoreCase: true, out var tipo))
-            return null;
+            return (ResultadoCrearMascota.TipoInvalido, null);
 
         var mascota = new Mascota
         {
@@ -36,7 +40,7 @@ public class MascotaService
         await _mascotaRepository.AddAsync(mascota);
         await _mascotaRepository.SaveChangesAsync();
 
-        return MapearDto(mascota);
+        return (ResultadoCrearMascota.Ok, MapearDto(mascota));
     }
 
     // Responde "¿qué come esta mascota?" con el historial REAL de compras (sin cambios de lógica)
