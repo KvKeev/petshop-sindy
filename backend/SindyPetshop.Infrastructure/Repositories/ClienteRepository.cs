@@ -20,7 +20,7 @@ public class ClienteRepository : RepositoryBase<Cliente>, IClienteRepository
             .FirstOrDefaultAsync(c => c.Id == clienteId);
     }
 
-    public async Task<(IEnumerable<Cliente> Items, int Total)> GetPaginadoAsync(
+public async Task<(IEnumerable<Cliente> Items, int Total)> GetPaginadoAsync(
         int pagina, int tamanioPagina, string? nombre, string? email)
     {
         var query = _dbSet
@@ -29,10 +29,10 @@ public class ClienteRepository : RepositoryBase<Cliente>, IClienteRepository
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(nombre))
-            query = query.Where(c => c.Nombre.Contains(nombre));
+            query = query.Where(c => EF.Functions.Like(c.Nombre, $"%{nombre}%"));
 
         if (!string.IsNullOrWhiteSpace(email))
-            query = query.Where(c => c.Email.Contains(email));
+            query = query.Where(c => EF.Functions.Like(c.Email, $"%{email}%"));
 
         var total = await query.CountAsync();
 

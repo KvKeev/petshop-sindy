@@ -31,7 +31,7 @@ public class MascotaRepository : RepositoryBase<Mascota>, IMascotaRepository
             .FirstOrDefaultAsync(m => m.Id == mascotaId);
     }
 
-    public async Task<(IEnumerable<Mascota> Items, int Total)> GetPaginadoConClienteAsync(
+public async Task<(IEnumerable<Mascota> Items, int Total)> GetPaginadoConClienteAsync(
         int pagina, int tamanioPagina, string? nombre)
     {
         var query = _dbSet
@@ -39,7 +39,7 @@ public class MascotaRepository : RepositoryBase<Mascota>, IMascotaRepository
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(nombre))
-            query = query.Where(m => m.Nombre.Contains(nombre));
+            query = query.Where(m => EF.Functions.Like(m.Nombre, $"%{nombre}%"));
 
         var total = await query.CountAsync();
 
