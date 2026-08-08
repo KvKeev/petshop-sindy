@@ -30,4 +30,25 @@ public class MascotaRepository : RepositoryBase<Mascota>, IMascotaRepository
             .Include(m => m.AlimentoFavoritoProducto)
             .FirstOrDefaultAsync(m => m.Id == mascotaId);
     }
+
+    public async Task<(IEnumerable<Mascota> Items, int Total)> GetPaginadoConClienteAsync(
+        int pagina, int tamanioPagina, string? nombre)
+    {
+        var query = _dbSet
+            .Include(m => m.Cliente)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(nombre))
+            query = query.Where(m => m.Nombre.Contains(nombre));
+
+        var total = await query.CountAsync();
+
+        var items = await query
+            .OrderBy(m => m.Nombre)
+            .Skip((pagina - 1) * tamanioPagina)
+            .Take(tamanioPagina)
+            .ToListAsync();
+
+        return (items, total);
+    }
 }
