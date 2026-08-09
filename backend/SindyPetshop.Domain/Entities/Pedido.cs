@@ -39,6 +39,8 @@ public class Pedido
     public int? DireccionId { get; set; }
     public MetodoPago MetodoPago { get; set; }
     public DateTime? ExpiraReservaEn { get; set; } // solo aplica si MetodoPago == Online
+    public string? MercadoPagoPreferenceId { get; set; }
+    public string? MercadoPagoPaymentId { get; set; }
     public Direccion? Direccion { get; set; }
 
     public DateTime Fecha { get; set; } = DateTime.UtcNow;

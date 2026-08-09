@@ -44,13 +44,35 @@ public class AdminPedidoService
         if (!EsTransicionValida(pedido, nuevoEstado))
             return (false, $"No se puede pasar de {pedido.Estado} a {nuevoEstado} para este pedido", null);
 
+        // FIX: pago Online confirmado -> recién acá se descuenta StockFisico de verdad.
+        // Hasta ahora el stock solo estaba reservado (ver PedidoService.CrearAsync), nunca se
+        // convertía en descuento físico real al pasar a Pagado.
+        if (nuevoEstado == EstadoPedido.Pagado && pedido.MetodoPago == MetodoPago.Online)
+        {
+            foreach (var detalle in pedido.Detalles)
+            {
+                var variante = await _context.VariantesProducto.FindAsync(detalle.VarianteId);
+                if (variante is null) continue; // no debería pasar, pero no rompemos la transición por esto
+
+                variante.StockFisico -= detalle.Cantidad;
+
+                _context.HistorialStock.Add(new HistorialStock
+                {
+                    VarianteId = detalle.VarianteId,
+                    TipoMovimiento = TipoMovimientoStock.Venta,
+                    Cantidad = detalle.Cantidad,
+                    Detalle = $"Venta confirmada - Pedido #{pedido.Id} (pago Online)",
+                });
+            }
+        }
+
         // Cancelación con devolución automática de stock, si ya se había descontado
         if (nuevoEstado == EstadoPedido.Cancelado && EstadosConStockDescontado.Contains(pedido.Estado))
         {
             foreach (var detalle in pedido.Detalles)
             {
                 var variante = await _context.VariantesProducto.FindAsync(detalle.VarianteId);
-                if (variante is null) continue; // no debería pasar, pero no rompemos la cancelación por esto
+                if (variante is null) continue;
 
                 variante.StockFisico += detalle.Cantidad;
 
