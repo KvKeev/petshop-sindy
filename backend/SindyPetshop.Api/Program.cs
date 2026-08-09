@@ -1,17 +1,16 @@
-using Microsoft.EntityFrameworkCore;
-using Scalar.AspNetCore;
-using SindyPetshop.Infrastructure.Data;
-using SindyPetshop.Domain.Interfaces;
-using SindyPetshop.Infrastructure.Repositories;
-using SindyPetshop.Application.Services;
 using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using SindyPetshop.Infrastructure.Services;
-using SindyPetshop.Api.BackgroundServices;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
-
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
+using SindyPetshop.Api.BackgroundServices;
+using SindyPetshop.Application.Services;
+using SindyPetshop.Domain.Interfaces;
+using SindyPetshop.Infrastructure.Data;
+using SindyPetshop.Infrastructure.Repositories;
+using SindyPetshop.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +19,8 @@ builder.Services.AddOpenApi();
 
 // Registra el DbContext, indicándole que use SQLite con la connection string de appsettings.json
 builder.Services.AddDbContext<SindyPetshopDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
 builder.Services.AddScoped<IProductoRepository, ProductoRepository>();
 builder.Services.AddScoped<ProductoService>();
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
@@ -33,53 +33,76 @@ builder.Services.AddScoped<PedidoService>();
 builder.Services.AddHostedService<LiberacionReservasBackgroundService>();
 builder.Services.AddScoped<AdminProductoService>();
 builder.Services.AddScoped<AdminPedidoService>();
+builder.Services.AddScoped<ClientePerfilService>();
+builder.Services.AddSingleton<IFileStorageService>(_ =>
+{
+    var wwwRootPath =
+        builder.Environment.WebRootPath
+        ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
+    return new FileStorageService(wwwRootPath);
+});
 builder.Services.AddScoped<AdminClienteService>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]!;
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
+builder
+    .Services.AddAuthentication(options =>
     {
-        ValidateIssuer = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidateAudience = true,
-        ValidAudience = builder.Configuration["Jwt:Issuer"],
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
-    };
-});
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Issuer"],
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        };
+    });
 
 builder.Services.AddControllers();
 const string PoliticaLoginRateLimit = "LoginPolicy";
 
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddPolicy(PoliticaLoginRateLimit, httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(1),
-                QueueLimit = 0
-            }));
+    options.AddPolicy(
+        PoliticaLoginRateLimit,
+        httpContext =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }
+            )
+    );
 
     options.OnRejected = async (context, cancellationToken) =>
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         await context.HttpContext.Response.WriteAsJsonAsync(
             new { mensaje = "Demasiados intentos de login. Esperá un minuto y probá de nuevo." },
-            cancellationToken);
+            cancellationToken
+        );
     };
 });
 
 var app = builder.Build();
+
+// Crea la estructura de carpetas de wwwroot si no existe (uploads y avatares de la galería)
+var wwwRootPathRuntime =
+    app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+Directory.CreateDirectory(Path.Combine(wwwRootPathRuntime, "avatares", "clientes"));
+foreach (var tipo in new[] { "Perro", "Gato", "Ave", "Conejo", "Hamster", "Otro" })
+    Directory.CreateDirectory(Path.Combine(wwwRootPathRuntime, "avatares", "mascotas", tipo));
+Directory.CreateDirectory(Path.Combine(wwwRootPathRuntime, "uploads", "clientes"));
+Directory.CreateDirectory(Path.Combine(wwwRootPathRuntime, "uploads", "mascotas"));
 
 if (app.Environment.IsDevelopment())
 {
@@ -97,6 +120,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseRateLimiter();
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -26,6 +26,7 @@ public class Mascota
     public string? AlimentoFavoritoDescripcion { get; set; }
     public DateTime? AlimentoFavoritoActualizadoEn { get; set; }
     public string? AlimentoFavoritoActualizadoPor { get; set; } // email de quién lo cargó/editó
+    public string? FotoUrl { get; set; }
 
     public ICollection<DetallePedido> ComprasAsociadas { get; set; } = new List<DetallePedido>();
 }

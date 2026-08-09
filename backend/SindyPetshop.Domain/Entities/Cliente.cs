@@ -18,5 +18,6 @@ public class Cliente
     public ICollection<Direccion> Direcciones { get; set; } = new List<Direccion>();
     public ICollection<Pedido> Pedidos { get; set; } = new List<Pedido>();
     public ICollection<Mascota> Mascotas { get; set; } = new List<Mascota>();
+    public string? FotoUrl { get; set; }
 
 }
