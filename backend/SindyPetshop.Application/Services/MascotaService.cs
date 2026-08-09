@@ -1,19 +1,24 @@
+using SindyPetshop.Application.Avatares;
 using SindyPetshop.Application.DTOs;
 using SindyPetshop.Domain.Entities;
 using SindyPetshop.Domain.Interfaces;
-using SindyPetshop.Application.Validaciones;
 
 namespace SindyPetshop.Application.Services;
 
 public class MascotaService
 {
     private readonly IMascotaRepository _mascotaRepository;
-    private readonly IProductoRepository _productoRepository; // NUEVO: valida el ProductoId del alimento favorito
+    private readonly IProductoRepository _productoRepository;
+    private readonly IFileStorageService _fileStorageService;
 
-    public MascotaService(IMascotaRepository mascotaRepository, IProductoRepository productoRepository)
+    public MascotaService(
+        IMascotaRepository mascotaRepository,
+        IProductoRepository productoRepository,
+        IFileStorageService fileStorageService)
     {
         _mascotaRepository = mascotaRepository;
         _productoRepository = productoRepository;
+        _fileStorageService = fileStorageService;
     }
 
     public async Task<IEnumerable<MascotaDto>> GetMisMascotasAsync(int clienteId)
@@ -22,13 +27,10 @@ public class MascotaService
         return mascotas.Select(MapearDto);
     }
 
-public async Task<(ResultadoCrearMascota Resultado, MascotaDto? Dto)> CrearAsync(int clienteId, CrearMascotaDto dto)
+    public async Task<MascotaDto?> CrearAsync(int clienteId, CrearMascotaDto dto)
     {
-        if (!NombreValidator.EsValido(dto.Nombre))
-            return (ResultadoCrearMascota.NombreInvalido, null);
-
         if (!Enum.TryParse<TipoMascota>(dto.Tipo, ignoreCase: true, out var tipo))
-            return (ResultadoCrearMascota.TipoInvalido, null);
+            return null;
 
         var mascota = new Mascota
         {
@@ -40,10 +42,9 @@ public async Task<(ResultadoCrearMascota Resultado, MascotaDto? Dto)> CrearAsync
         await _mascotaRepository.AddAsync(mascota);
         await _mascotaRepository.SaveChangesAsync();
 
-        return (ResultadoCrearMascota.Ok, MapearDto(mascota));
+        return MapearDto(mascota);
     }
 
-    // Responde "¿qué come esta mascota?" con el historial REAL de compras (sin cambios de lógica)
     public async Task<(ResultadoConsulta Resultado, MascotaConHistorialDto? Dto)> GetConHistorialAsync(
         int mascotaId, int clienteIdSolicitante, bool esAdmin)
     {
@@ -75,7 +76,6 @@ public async Task<(ResultadoCrearMascota Resultado, MascotaDto? Dto)> CrearAsync
         return (ResultadoConsulta.Ok, dto);
     }
 
-    // NUEVO: elección pura, nunca inferida de compras. Puede editarla el dueño o un Admin.
     public async Task<(ResultadoConsulta Resultado, string? Detalle, MascotaDto? Dto)> ActualizarAlimentoFavoritoAsync(
         int mascotaId, int clienteIdSolicitante, bool esAdmin, ActualizarAlimentoFavoritoDto dto, string actualizadoPor)
     {
@@ -105,10 +105,62 @@ public async Task<(ResultadoCrearMascota Resultado, MascotaDto? Dto)> CrearAsync
         return (ResultadoConsulta.Ok, null, MapearDto(actualizada!));
     }
 
+    // NUEVO: sube una foto propia para la mascota (dueño o Admin)
+    public async Task<(ResultadoSubirFotoMascota Resultado, MascotaDto? Dto)> SubirFotoAsync(
+        int mascotaId, int clienteIdSolicitante, bool esAdmin, Stream contenido, long tamanioBytes, string nombreArchivo)
+    {
+        var mascota = await _mascotaRepository.GetByIdAsync(mascotaId);
+        if (mascota is null)
+            return (ResultadoSubirFotoMascota.NoEncontrada, null);
+
+        if (mascota.ClienteId != clienteIdSolicitante && !esAdmin)
+            return (ResultadoSubirFotoMascota.NoAutorizado, null);
+
+        var url = await _fileStorageService.GuardarAsync(contenido, tamanioBytes, nombreArchivo, "mascotas", $"mascota{mascotaId}");
+        if (url is null)
+            return (ResultadoSubirFotoMascota.ArchivoInvalido, null);
+
+        _fileStorageService.EliminarSiEsSubida(mascota.FotoUrl);
+
+        mascota.FotoUrl = url;
+        _mascotaRepository.Update(mascota);
+        await _mascotaRepository.SaveChangesAsync();
+
+        return (ResultadoSubirFotoMascota.Ok, MapearDto(mascota));
+    }
+
+    // NUEVO: elige un avatar de la galería, filtrado por el Tipo de esta mascota (dueño o Admin)
+    public async Task<(ResultadoSeleccionarAvatarMascota Resultado, MascotaDto? Dto)> SeleccionarAvatarAsync(
+        int mascotaId, int clienteIdSolicitante, bool esAdmin, SeleccionarAvatarMascotaDto dto)
+    {
+        var mascota = await _mascotaRepository.GetByIdAsync(mascotaId);
+        if (mascota is null)
+            return (ResultadoSeleccionarAvatarMascota.NoEncontrada, null);
+
+        if (mascota.ClienteId != clienteIdSolicitante && !esAdmin)
+            return (ResultadoSeleccionarAvatarMascota.NoAutorizado, null);
+
+        var tipoStr = mascota.Tipo.ToString();
+        if (!AvatarCatalog.EsValidoMascotaAvatar(tipoStr, dto.AvatarId))
+            return (ResultadoSeleccionarAvatarMascota.AvatarInvalido, null);
+
+        _fileStorageService.EliminarSiEsSubida(mascota.FotoUrl);
+
+        mascota.FotoUrl = AvatarCatalog.GetMascotaAvatares(tipoStr).First(a => a.Id == dto.AvatarId).Url;
+        _mascotaRepository.Update(mascota);
+        await _mascotaRepository.SaveChangesAsync();
+
+        return (ResultadoSeleccionarAvatarMascota.Ok, MapearDto(mascota));
+    }
+
+    // NUEVO: lista los avatares disponibles para un tipo de animal (galería)
+    public List<AvatarDto> GetAvataresPorTipo(string tipo) => AvatarCatalog.GetMascotaAvatares(tipo);
+
     private static MascotaDto MapearDto(Mascota m) => new(
         m.Id,
         m.Nombre,
         m.Tipo.ToString(),
+        m.FotoUrl,
         m.AlimentoFavoritoProducto?.Nombre,
         m.AlimentoFavoritoDescripcion,
         m.AlimentoFavoritoActualizadoEn,

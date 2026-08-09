@@ -4,6 +4,7 @@ public record MascotaDto(
     int Id,
     string Nombre,
     string Tipo,
+    string? FotoUrl,
     string? AlimentoFavoritoNombre,        // nombre del producto, si está en catálogo
     string? AlimentoFavoritoDescripcion,   // texto libre, si no está en catálogo
     DateTime? AlimentoFavoritoActualizadoEn,
@@ -33,10 +34,9 @@ public record MascotaConHistorialDto(
     string? AlimentoFavoritoActualizadoPor,
     IEnumerable<CompraMascotaDto> HistorialCompras
 );
-// distingue el motivo de fallo al crear mascota (antes solo existía tipo inválido)
-public enum ResultadoCrearMascota
-{
-    Ok,
-    TipoInvalido,
-    NombreInvalido
-}
+
+// NUEVO: foto/avatar de mascota
+public record SeleccionarAvatarMascotaDto(string AvatarId);
+
+public enum ResultadoSubirFotoMascota { Ok, NoEncontrada, NoAutorizado, ArchivoInvalido }
+public enum ResultadoSeleccionarAvatarMascota { Ok, NoEncontrada, NoAutorizado, AvatarInvalido }
