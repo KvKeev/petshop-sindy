@@ -42,7 +42,14 @@ public class MercadoPagoService : IMercadoPagoService
             var client = new PreferenceClient();
             var preference = await client.CreateAsync(request);
 
-            return (preference.Id, preference.InitPoint);
+            // Con credenciales de test (TEST-...), InitPoint suele venir null y hay que usar
+            // SandboxInitPoint en su lugar. Con credenciales de producción, InitPoint sí viene.
+            var urlDePago = preference.InitPoint ?? preference.SandboxInitPoint;
+
+            if (string.IsNullOrEmpty(urlDePago))
+                return null;
+
+            return (preference.Id, urlDePago);
         }
         catch
         {
