@@ -40,3 +40,11 @@ public record SeleccionarAvatarMascotaDto(string AvatarId);
 
 public enum ResultadoSubirFotoMascota { Ok, NoEncontrada, NoAutorizado, ArchivoInvalido }
 public enum ResultadoSeleccionarAvatarMascota { Ok, NoEncontrada, NoAutorizado, AvatarInvalido }
+
+// NUEVO: distingue el motivo de fallo al crear mascota (antes solo existía tipo inválido)
+public enum ResultadoCrearMascota
+{
+    Ok,
+    TipoInvalido,
+    NombreInvalido
+}
