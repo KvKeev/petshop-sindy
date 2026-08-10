@@ -34,6 +34,12 @@ builder.Services.AddHostedService<LiberacionReservasBackgroundService>();
 builder.Services.AddScoped<AdminProductoService>();
 builder.Services.AddScoped<AdminPedidoService>();
 builder.Services.AddScoped<ClientePerfilService>();
+builder.Services.AddSingleton<IMercadoPagoService>(_ =>
+{
+    var accessToken = builder.Configuration["MercadoPago:AccessToken"] ?? "";
+    var webhookUrl = builder.Configuration["MercadoPago:WebhookUrl"]; // opcional
+    return new MercadoPagoService(accessToken, webhookUrl);
+});
 builder.Services.AddSingleton<IFileStorageService>(_ =>
 {
     var wwwRootPath =

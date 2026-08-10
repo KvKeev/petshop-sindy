@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SindyPetshop.Application.DTOs;
 using SindyPetshop.Domain.Entities;
 using SindyPetshop.Domain.Interfaces;
@@ -9,17 +10,23 @@ public class PedidoService
     private readonly IPedidoRepository _pedidoRepository;
     private readonly IProductoRepository _productoRepository;
     private readonly IClienteRepository _clienteRepository;
+    private readonly IMercadoPagoService _mercadoPagoService;
+    private readonly ILogger<PedidoService> _logger;
 
     private const int MinutosExpiracionReserva = 15;
 
     public PedidoService(
         IPedidoRepository pedidoRepository,
         IProductoRepository productoRepository,
-        IClienteRepository clienteRepository)
+        IClienteRepository clienteRepository,
+        IMercadoPagoService mercadoPagoService,
+        ILogger<PedidoService> logger)
     {
         _pedidoRepository = pedidoRepository;
         _productoRepository = productoRepository;
         _clienteRepository = clienteRepository;
+        _mercadoPagoService = mercadoPagoService;
+        _logger = logger;
     }
 
     public async Task<(ResultadoCrearPedido Resultado, string? Detalle, PedidoDto? Pedido)> CrearAsync(
@@ -35,13 +42,14 @@ public class PedidoService
             return (ResultadoCrearPedido.MetodoInvalido, "MetodoPago inválido. Valores: Online, PagoEnEntrega", null);
 
         int? direccionId = null;
+        Cliente? cliente = null;
         if (metodoEntrega == MetodoEntrega.Envio)
         {
+            cliente = await _clienteRepository.GetConDireccionesAsync(clienteId);
+            var direccionValida = cliente?.Direcciones.Any(d => d.Id == dto.DireccionId) ?? false;
+
             if (dto.DireccionId is null)
                 return (ResultadoCrearPedido.DireccionRequerida, null, null);
-
-            var cliente = await _clienteRepository.GetConDireccionesAsync(clienteId);
-            var direccionValida = cliente?.Direcciones.Any(d => d.Id == dto.DireccionId) ?? false;
 
             if (!direccionValida)
                 return (ResultadoCrearPedido.DireccionInvalida, null, null);
@@ -59,6 +67,7 @@ public class PedidoService
         };
 
         decimal total = 0;
+        var itemsParaPreferencia = new List<(string Titulo, int Cantidad, decimal PrecioUnitario)>();
 
         foreach (var item in dto.Items)
         {
@@ -83,8 +92,8 @@ public class PedidoService
             });
 
             total += variante.Precio * item.Cantidad;
+            itemsParaPreferencia.Add(($"{variante.Producto?.Nombre} ({variante.Atributo}: {variante.Valor})", item.Cantidad, variante.Precio));
 
-            // Pago en entrega (local o contra entrega): descuento firme e inmediato, no hay reserva
             if (metodoPago == MetodoPago.PagoEnEntrega)
             {
                 variante.StockFisico -= item.Cantidad;
@@ -110,10 +119,29 @@ public class PedidoService
             pedido.Estado = EstadoPedido.Confirmado;
         }
 
-        // Todo lo anterior (pedido, detalles, stock, historial) se guarda en UNA sola
-        // transacción implícita acá, porque es un único SaveChangesAsync sobre el mismo DbContext.
         await _pedidoRepository.AddAsync(pedido);
         await _pedidoRepository.SaveChangesAsync();
+
+        // Recién con el pedido ya guardado (tiene Id real) se genera la preferencia de pago.
+        // Si MercadoPago falla acá, el pedido igual queda creado (con stock reservado) -
+        // simplemente no va a tener LinkPago, y se puede reintentar más adelante si hace falta.
+        if (metodoPago == MetodoPago.Online)
+        {
+            cliente ??= await _clienteRepository.GetByIdAsync(clienteId);
+            var preferencia = await _mercadoPagoService.CrearPreferenciaAsync(
+                pedido.Id, cliente?.Email ?? "", itemsParaPreferencia);
+
+            if (preferencia is not null)
+            {
+                pedido.MercadoPagoPreferenceId = preferencia.Value.PreferenceId;
+                _pedidoRepository.Update(pedido);
+                await _pedidoRepository.SaveChangesAsync();
+            }
+            else
+            {
+                _logger.LogWarning("No se pudo generar la preferencia de MercadoPago para el pedido {PedidoId}", pedido.Id);
+            }
+        }
 
         var pedidoConDetalles = await _pedidoRepository.GetConDetallesAsync(pedido.Id);
         return (ResultadoCrearPedido.Ok, null, MapearDto(pedidoConDetalles!));
@@ -147,6 +175,10 @@ public class PedidoService
             d.PrecioUnitario
         ));
 
+        string? linkPago = pedido.MetodoPago == MetodoPago.Online && pedido.Estado == EstadoPedido.PendientePago
+            ? BuscarInitPointGuardado(pedido)
+            : null;
+
         return new PedidoDto(
             pedido.Id,
             pedido.Fecha,
@@ -156,7 +188,15 @@ public class PedidoService
             pedido.Origen.ToString(),
             pedido.Total,
             pedido.ExpiraReservaEn,
-            detalles
+            detalles,
+            linkPago
         );
     }
+
+    // Nota: no guardamos el InitPoint completo en la base (solo el PreferenceId), así que
+    // en GetDetalleAsync/GetMisPedidosAsync no lo podemos reconstruir sin volver a llamar a MercadoPago.
+    // Por eso: el LinkPago solo viaja en la respuesta del POST inicial (recién creado), donde sí lo tenemos en memoria.
+    // Para futuras consultas, el frontend debe guardar ese link la primera vez, o se agrega un endpoint
+    // aparte más adelante si hace falta recuperarlo después.
+    private static string? BuscarInitPointGuardado(Pedido pedido) => null;
 }

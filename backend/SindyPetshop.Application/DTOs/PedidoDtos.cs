@@ -27,5 +27,6 @@ public record PedidoDto(
     string Origen,
     decimal Total,
     DateTime? ExpiraReservaEn,
-    IEnumerable<DetallePedidoDto> Detalles
+    IEnumerable<DetallePedidoDto> Detalles,
+    string? LinkPago
 );
