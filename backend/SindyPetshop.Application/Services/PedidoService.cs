@@ -125,6 +125,8 @@ public class PedidoService
         // Recién con el pedido ya guardado (tiene Id real) se genera la preferencia de pago.
         // Si MercadoPago falla acá, el pedido igual queda creado (con stock reservado) -
         // simplemente no va a tener LinkPago, y se puede reintentar más adelante si hace falta.
+       string? linkPago = null;
+
         if (metodoPago == MetodoPago.Online)
         {
             cliente ??= await _clienteRepository.GetByIdAsync(clienteId);
@@ -134,6 +136,7 @@ public class PedidoService
             if (preferencia is not null)
             {
                 pedido.MercadoPagoPreferenceId = preferencia.Value.PreferenceId;
+                linkPago = preferencia.Value.InitPoint; // <- ESTE era el dato que se perdía
                 _pedidoRepository.Update(pedido);
                 await _pedidoRepository.SaveChangesAsync();
             }
@@ -144,13 +147,13 @@ public class PedidoService
         }
 
         var pedidoConDetalles = await _pedidoRepository.GetConDetallesAsync(pedido.Id);
-        return (ResultadoCrearPedido.Ok, null, MapearDto(pedidoConDetalles!));
+        return (ResultadoCrearPedido.Ok, null, MapearDto(pedidoConDetalles!, linkPago));
     }
 
     public async Task<IEnumerable<PedidoDto>> GetMisPedidosAsync(int clienteId)
     {
         var pedidos = await _pedidoRepository.GetByClienteIdAsync(clienteId);
-        return pedidos.Select(MapearDto);
+        return pedidos.Select(p => MapearDto(p));
     }
 
     public async Task<(ResultadoConsulta Resultado, PedidoDto? Dto)> GetDetalleAsync(
@@ -166,7 +169,7 @@ public class PedidoService
         return (ResultadoConsulta.Ok, MapearDto(pedido));
     }
 
-    private static PedidoDto MapearDto(Pedido pedido)
+    private static PedidoDto MapearDto(Pedido pedido, string? linkPago = null)
     {
         var detalles = pedido.Detalles.Select(d => new DetallePedidoDto(
             d.Variante?.Producto?.Nombre ?? string.Empty,
@@ -174,10 +177,6 @@ public class PedidoService
             d.Cantidad,
             d.PrecioUnitario
         ));
-
-        string? linkPago = pedido.MetodoPago == MetodoPago.Online && pedido.Estado == EstadoPedido.PendientePago
-            ? BuscarInitPointGuardado(pedido)
-            : null;
 
         return new PedidoDto(
             pedido.Id,
@@ -198,5 +197,4 @@ public class PedidoService
     // Por eso: el LinkPago solo viaja en la respuesta del POST inicial (recién creado), donde sí lo tenemos en memoria.
     // Para futuras consultas, el frontend debe guardar ese link la primera vez, o se agrega un endpoint
     // aparte más adelante si hace falta recuperarlo después.
-    private static string? BuscarInitPointGuardado(Pedido pedido) => null;
 }
