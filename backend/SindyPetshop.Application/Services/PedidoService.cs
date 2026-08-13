@@ -11,6 +11,7 @@ public class PedidoService
     private readonly IProductoRepository _productoRepository;
     private readonly IClienteRepository _clienteRepository;
     private readonly IMercadoPagoService _mercadoPagoService;
+    private readonly ICostoEnvioService _costoEnvioService;
     private readonly ILogger<PedidoService> _logger;
 
     private const int MinutosExpiracionReserva = 15;
@@ -20,12 +21,14 @@ public class PedidoService
         IProductoRepository productoRepository,
         IClienteRepository clienteRepository,
         IMercadoPagoService mercadoPagoService,
+        ICostoEnvioService costoEnvioService,
         ILogger<PedidoService> logger)
     {
         _pedidoRepository = pedidoRepository;
         _productoRepository = productoRepository;
         _clienteRepository = clienteRepository;
         _mercadoPagoService = mercadoPagoService;
+        _costoEnvioService = costoEnvioService;
         _logger = logger;
     }
 
@@ -43,6 +46,7 @@ public class PedidoService
 
         int? direccionId = null;
         Cliente? cliente = null;
+        Direccion? direccionSeleccionada = null;
         if (metodoEntrega == MetodoEntrega.Envio)
         {
             cliente = await _clienteRepository.GetConDireccionesAsync(clienteId);
@@ -55,6 +59,7 @@ public class PedidoService
                 return (ResultadoCrearPedido.DireccionInvalida, null, null);
 
             direccionId = dto.DireccionId;
+            direccionSeleccionada = cliente!.Direcciones.First(d => d.Id == dto.DireccionId);
         }
 
         var pedido = new Pedido
@@ -107,7 +112,14 @@ public class PedidoService
             }
         }
 
-        pedido.Total = total;
+        var costoEnvio = _costoEnvioService.Calcular(metodoEntrega, direccionSeleccionada);
+        pedido.CostoEnvio = costoEnvio;
+        pedido.Total = total + costoEnvio;
+
+        // Si hay costo de envío, se agrega como ítem aparte de la preferencia de MercadoPago -
+        // si no, el cliente pagaría online solo el subtotal de productos y el envío quedaría sin cobrar.
+        if (costoEnvio > 0)
+            itemsParaPreferencia.Add(("Costo de envío", 1, costoEnvio));
 
         if (metodoPago == MetodoPago.Online)
         {
@@ -124,9 +136,7 @@ public class PedidoService
 
         // Recién con el pedido ya guardado (tiene Id real) se genera la preferencia de pago.
         // Si MercadoPago falla acá, el pedido igual queda creado (con stock reservado) -
-        // simplemente no va a tener LinkPago, y se puede reintentar más adelante si hace falta.
-       string? linkPago = null;
-
+        // simplemente no va a tener MercadoPagoInitPoint, y se puede reintentar más adelante si hace falta.
         if (metodoPago == MetodoPago.Online)
         {
             cliente ??= await _clienteRepository.GetByIdAsync(clienteId);
@@ -136,7 +146,7 @@ public class PedidoService
             if (preferencia is not null)
             {
                 pedido.MercadoPagoPreferenceId = preferencia.Value.PreferenceId;
-                linkPago = preferencia.Value.InitPoint; // <- ESTE era el dato que se perdía
+                pedido.MercadoPagoInitPoint = preferencia.Value.InitPoint;
                 _pedidoRepository.Update(pedido);
                 await _pedidoRepository.SaveChangesAsync();
             }
@@ -147,7 +157,7 @@ public class PedidoService
         }
 
         var pedidoConDetalles = await _pedidoRepository.GetConDetallesAsync(pedido.Id);
-        return (ResultadoCrearPedido.Ok, null, MapearDto(pedidoConDetalles!, linkPago));
+        return (ResultadoCrearPedido.Ok, null, MapearDto(pedidoConDetalles!));
     }
 
     public async Task<IEnumerable<PedidoDto>> GetMisPedidosAsync(int clienteId)
@@ -169,7 +179,7 @@ public class PedidoService
         return (ResultadoConsulta.Ok, MapearDto(pedido));
     }
 
-    private static PedidoDto MapearDto(Pedido pedido, string? linkPago = null)
+    private static PedidoDto MapearDto(Pedido pedido)
     {
         var detalles = pedido.Detalles.Select(d => new DetallePedidoDto(
             d.Variante?.Producto?.Nombre ?? string.Empty,
@@ -185,16 +195,11 @@ public class PedidoService
             pedido.MetodoEntrega.ToString(),
             pedido.MetodoPago.ToString(),
             pedido.Origen.ToString(),
+            pedido.CostoEnvio,
             pedido.Total,
             pedido.ExpiraReservaEn,
             detalles,
-            linkPago
+            pedido.MercadoPagoInitPoint
         );
     }
-
-    // Nota: no guardamos el InitPoint completo en la base (solo el PreferenceId), así que
-    // en GetDetalleAsync/GetMisPedidosAsync no lo podemos reconstruir sin volver a llamar a MercadoPago.
-    // Por eso: el LinkPago solo viaja en la respuesta del POST inicial (recién creado), donde sí lo tenemos en memoria.
-    // Para futuras consultas, el frontend debe guardar ese link la primera vez, o se agrega un endpoint
-    // aparte más adelante si hace falta recuperarlo después.
 }

@@ -48,6 +48,11 @@ builder.Services.AddSingleton<IFileStorageService>(_ =>
     return new FileStorageService(wwwRootPath);
 });
 builder.Services.AddScoped<AdminClienteService>();
+builder.Services.AddSingleton<ICostoEnvioService>(_ =>
+{
+    var tarifaPlana = builder.Configuration.GetValue<decimal?>("Envio:TarifaPlana") ?? 0m;
+    return new TarifaPlanaCostoEnvioService(tarifaPlana);
+});
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]!;
 builder

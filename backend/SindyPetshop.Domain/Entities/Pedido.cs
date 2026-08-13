@@ -41,12 +41,18 @@ public class Pedido
     public DateTime? ExpiraReservaEn { get; set; } // solo aplica si MetodoPago == Online
     public string? MercadoPagoPreferenceId { get; set; }
     public string? MercadoPagoPaymentId { get; set; }
+    // Se guarda junto con el PreferenceId al crear el pedido Online, para poder
+    // devolverlo en cualquier consulta futura (GET /pedidos/{id}), no solo en el POST inicial.
+    public string? MercadoPagoInitPoint { get; set; }
     public Direccion? Direccion { get; set; }
 
     public DateTime Fecha { get; set; } = DateTime.UtcNow;
     public EstadoPedido Estado { get; set; } = EstadoPedido.PendientePago;
     public MetodoEntrega MetodoEntrega { get; set; }
     public OrigenPedido Origen { get; set; } = OrigenPedido.Web;
+    // Costo de envío ya sumado dentro de Total, pero guardado aparte para mostrar el
+    // desglose (subtotal + envío) en el comprobante y en el panel admin.
+    public decimal CostoEnvio { get; set; }
     public decimal Total { get; set; }
 
     public ICollection<DetallePedido> Detalles { get; set; } = new List<DetallePedido>();

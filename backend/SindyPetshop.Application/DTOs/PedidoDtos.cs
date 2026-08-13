@@ -25,6 +25,7 @@ public record PedidoDto(
     string MetodoEntrega,
     string MetodoPago,
     string Origen,
+    decimal CostoEnvio,
     decimal Total,
     DateTime? ExpiraReservaEn,
     IEnumerable<DetallePedidoDto> Detalles,

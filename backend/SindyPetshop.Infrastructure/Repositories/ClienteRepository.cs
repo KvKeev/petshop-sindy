@@ -50,6 +50,7 @@ public async Task<(IEnumerable<Cliente> Items, int Total)> GetPaginadoAsync(
         return await _dbSet
             .Include(c => c.Direcciones)
             .Include(c => c.Mascotas)
+                .ThenInclude(m => m.AlimentoFavoritoProducto)
             .Include(c => c.Pedidos)
             .FirstOrDefaultAsync(c => c.Id == clienteId);
     }

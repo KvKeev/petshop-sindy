@@ -133,6 +133,7 @@ public class AdminPedidoService
         p.MetodoEntrega.ToString(),
         p.MetodoPago.ToString(),
         p.Origen.ToString(),
+        p.CostoEnvio,
         p.Total,
         p.ExpiraReservaEn,
         p.Detalles.Select(d => new DetallePedidoDto(
@@ -140,6 +141,7 @@ public class AdminPedidoService
             $"{d.Variante?.Atributo}: {d.Variante?.Valor}",
             d.Cantidad,
             d.PrecioUnitario
-        ))
+        )),
+        p.MercadoPagoInitPoint
     );
 }

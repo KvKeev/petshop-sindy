@@ -48,6 +48,7 @@ public class SindyPetshopDbContext : DbContext
             entity.Property(p => p.Origen).HasConversion<string>();
             entity.Property(p => p.MetodoPago).HasConversion<string>();
             entity.Property(p => p.Total).HasPrecision(10, 2);
+            entity.Property(p => p.CostoEnvio).HasPrecision(10, 2);
 
             entity
                 .HasOne(p => p.Direccion)

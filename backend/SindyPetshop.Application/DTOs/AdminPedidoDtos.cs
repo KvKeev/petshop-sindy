@@ -11,9 +11,11 @@ public record PedidoAdminDto(
     string MetodoEntrega,
     string MetodoPago,
     string Origen,
+    decimal CostoEnvio,
     decimal Total,
     DateTime? ExpiraReservaEn,
-    IEnumerable<DetallePedidoDto> Detalles
+    IEnumerable<DetallePedidoDto> Detalles,
+    string? LinkPago
 );
 
 public record CambiarEstadoPedidoDto(string NuevoEstado);
