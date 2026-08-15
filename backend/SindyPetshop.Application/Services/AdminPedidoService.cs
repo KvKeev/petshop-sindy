@@ -13,7 +13,10 @@ public class AdminPedidoService
     // Estados en los que YA se descontó StockFisico (no reserva) — si se cancela desde acá, hay que devolver
     private static readonly HashSet<EstadoPedido> EstadosConStockDescontado = new()
     {
-        EstadoPedido.Confirmado, EstadoPedido.Pagado, EstadoPedido.ListoParaRetirar, EstadoPedido.Enviado
+        EstadoPedido.Confirmado,
+        EstadoPedido.Pagado,
+        EstadoPedido.ListoParaRetirar,
+        EstadoPedido.Enviado,
     };
 
     public AdminPedidoService(IPedidoRepository pedidoRepository, SindyPetshopDbContext context)
@@ -25,14 +28,28 @@ public class AdminPedidoService
     public async Task<PagedResult<PedidoAdminDto>> GetListadoAsync(FiltrosPedidoAdmin filtros)
     {
         var (items, total) = await _pedidoRepository.GetListadoAdminAsync(
-            filtros.Pagina, filtros.TamanioPagina, filtros.Estado, filtros.Desde, filtros.Hasta,
-            filtros.ClienteId, filtros.MetodoPago, filtros.MetodoEntrega);
+            filtros.Pagina,
+            filtros.TamanioPagina,
+            filtros.Estado,
+            filtros.Desde,
+            filtros.Hasta,
+            filtros.ClienteId,
+            filtros.MetodoPago,
+            filtros.MetodoEntrega
+        );
 
-        return new PagedResult<PedidoAdminDto>(items.Select(MapearDto), total, filtros.Pagina, filtros.TamanioPagina);
+        return new PagedResult<PedidoAdminDto>(
+            items.Select(MapearDto),
+            total,
+            filtros.Pagina,
+            filtros.TamanioPagina
+        );
     }
 
     public async Task<(bool Exito, string? Error, PedidoAdminDto? Dto)> CambiarEstadoAsync(
-        int pedidoId, string nuevoEstadoStr)
+        int pedidoId,
+        string nuevoEstadoStr
+    )
     {
         if (!Enum.TryParse<EstadoPedido>(nuevoEstadoStr, ignoreCase: true, out var nuevoEstado))
             return (false, "Estado inválido", null);
@@ -42,7 +59,11 @@ public class AdminPedidoService
             return (false, "Pedido no encontrado", null);
 
         if (!EsTransicionValida(pedido, nuevoEstado))
-            return (false, $"No se puede pasar de {pedido.Estado} a {nuevoEstado} para este pedido", null);
+            return (
+                false,
+                $"No se puede pasar de {pedido.Estado} a {nuevoEstado} para este pedido",
+                null
+            );
 
         // FIX: pago Online confirmado -> recién acá se descuenta StockFisico de verdad.
         // Hasta ahora el stock solo estaba reservado (ver PedidoService.CrearAsync), nunca se
@@ -52,37 +73,46 @@ public class AdminPedidoService
             foreach (var detalle in pedido.Detalles)
             {
                 var variante = await _context.VariantesProducto.FindAsync(detalle.VarianteId);
-                if (variante is null) continue; // no debería pasar, pero no rompemos la transición por esto
+                if (variante is null)
+                    continue; // no debería pasar, pero no rompemos la transición por esto
 
                 variante.StockFisico -= detalle.Cantidad;
 
-                _context.HistorialStock.Add(new HistorialStock
-                {
-                    VarianteId = detalle.VarianteId,
-                    TipoMovimiento = TipoMovimientoStock.Venta,
-                    Cantidad = detalle.Cantidad,
-                    Detalle = $"Venta confirmada - Pedido #{pedido.Id} (pago Online)",
-                });
+                _context.HistorialStock.Add(
+                    new HistorialStock
+                    {
+                        VarianteId = detalle.VarianteId,
+                        TipoMovimiento = TipoMovimientoStock.Venta,
+                        Cantidad = detalle.Cantidad,
+                        Detalle = $"Venta confirmada - Pedido #{pedido.Id} (pago Online)",
+                    }
+                );
             }
         }
 
         // Cancelación con devolución automática de stock, si ya se había descontado
-        if (nuevoEstado == EstadoPedido.Cancelado && EstadosConStockDescontado.Contains(pedido.Estado))
+        if (
+            nuevoEstado == EstadoPedido.Cancelado
+            && EstadosConStockDescontado.Contains(pedido.Estado)
+        )
         {
             foreach (var detalle in pedido.Detalles)
             {
                 var variante = await _context.VariantesProducto.FindAsync(detalle.VarianteId);
-                if (variante is null) continue;
+                if (variante is null)
+                    continue;
 
                 variante.StockFisico += detalle.Cantidad;
 
-                _context.HistorialStock.Add(new HistorialStock
-                {
-                    VarianteId = detalle.VarianteId,
-                    TipoMovimiento = TipoMovimientoStock.DevolucionCancelacion,
-                    Cantidad = detalle.Cantidad,
-                    Detalle = $"Devolución por cancelación del pedido #{pedido.Id}",
-                });
+                _context.HistorialStock.Add(
+                    new HistorialStock
+                    {
+                        VarianteId = detalle.VarianteId,
+                        TipoMovimiento = TipoMovimientoStock.DevolucionCancelacion,
+                        Cantidad = detalle.Cantidad,
+                        Detalle = $"Devolución por cancelación del pedido #{pedido.Id}",
+                    }
+                );
             }
         }
 
@@ -111,37 +141,57 @@ public class AdminPedidoService
         {
             (EstadoPedido.PendientePago, EstadoPedido.Pagado, MetodoPago.Online, _) => true,
 
-            (EstadoPedido.Confirmado, EstadoPedido.ListoParaRetirar, MetodoPago.PagoEnEntrega, MetodoEntrega.Retiro) => true,
-            (EstadoPedido.Confirmado, EstadoPedido.Enviado, MetodoPago.PagoEnEntrega, MetodoEntrega.Envio) => true,
+            (
+                EstadoPedido.Confirmado,
+                EstadoPedido.ListoParaRetirar,
+                MetodoPago.PagoEnEntrega,
+                MetodoEntrega.Retiro
+            ) => true,
+            (
+                EstadoPedido.Confirmado,
+                EstadoPedido.Enviado,
+                MetodoPago.PagoEnEntrega,
+                MetodoEntrega.Envio
+            ) => true,
 
-            (EstadoPedido.Pagado, EstadoPedido.ListoParaRetirar, MetodoPago.Online, MetodoEntrega.Retiro) => true,
-            (EstadoPedido.Pagado, EstadoPedido.Enviado, MetodoPago.Online, MetodoEntrega.Envio) => true,
+            (
+                EstadoPedido.Pagado,
+                EstadoPedido.ListoParaRetirar,
+                MetodoPago.Online,
+                MetodoEntrega.Retiro
+            ) => true,
+            (EstadoPedido.Pagado, EstadoPedido.Enviado, MetodoPago.Online, MetodoEntrega.Envio) =>
+                true,
 
-            (EstadoPedido.ListoParaRetirar, EstadoPedido.Completado, _, MetodoEntrega.Retiro) => true,
+            (EstadoPedido.ListoParaRetirar, EstadoPedido.Completado, _, MetodoEntrega.Retiro) =>
+                true,
             (EstadoPedido.Enviado, EstadoPedido.Completado, _, MetodoEntrega.Envio) => true,
 
             _ => false,
         };
     }
 
-    private static PedidoAdminDto MapearDto(Pedido p) => new(
-        p.Id,
-        p.Cliente?.Nombre ?? string.Empty,
-        p.Cliente?.Email ?? string.Empty,
-        p.Fecha,
-        p.Estado.ToString(),
-        p.MetodoEntrega.ToString(),
-        p.MetodoPago.ToString(),
-        p.Origen.ToString(),
-        p.CostoEnvio,
-        p.Total,
-        p.ExpiraReservaEn,
-        p.Detalles.Select(d => new DetallePedidoDto(
-            d.Variante?.Producto?.Nombre ?? string.Empty,
-            $"{d.Variante?.Atributo}: {d.Variante?.Valor}",
-            d.Cantidad,
-            d.PrecioUnitario
-        )),
-        p.MercadoPagoInitPoint
-    );
+    private static PedidoAdminDto MapearDto(Pedido p) =>
+        new(
+            p.Id,
+            p.Cliente?.Nombre ?? string.Empty,
+            p.Cliente?.Email ?? string.Empty,
+            p.Fecha,
+            p.Estado.ToString(),
+            p.MetodoEntrega.ToString(),
+            p.MetodoPago.ToString(),
+            p.SubMetodoPagoEntrega?.ToString(),
+            p.Origen.ToString(),
+            p.CostoEnvio,
+            p.Total,
+            p.ExpiraReservaEn,
+            p.Detalles.Select(d => new DetallePedidoDto(
+                d.Variante?.Producto?.Nombre ?? string.Empty,
+                $"{d.Variante?.Atributo}: {d.Variante?.Valor}",
+                d.Cantidad,
+                d.PrecioUnitario
+            )),
+            p.MercadoPagoInitPoint,
+            p.TrackingToken
+        );
 }

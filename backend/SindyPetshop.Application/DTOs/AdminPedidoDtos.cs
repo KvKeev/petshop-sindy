@@ -10,12 +10,14 @@ public record PedidoAdminDto(
     string Estado,
     string MetodoEntrega,
     string MetodoPago,
+    string? SubMetodoPagoEntrega,
     string Origen,
     decimal CostoEnvio,
     decimal Total,
     DateTime? ExpiraReservaEn,
     IEnumerable<DetallePedidoDto> Detalles,
-    string? LinkPago
+    string? LinkPago,
+    Guid TrackingToken
 );
 
 public record CambiarEstadoPedidoDto(string NuevoEstado);

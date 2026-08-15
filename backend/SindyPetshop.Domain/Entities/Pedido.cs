@@ -14,7 +14,16 @@ public enum EstadoPedido
 public enum MetodoPago
 {
     Online, // MercadoPago vía web
-    PagoEnEntrega, // tarjeta/efectivo en el local, o efectivo contra entrega
+    PagoEnEntrega, // tarjeta/efectivo en el local, o efectivo/QR/transferencia contra entrega
+}
+
+// Solo aplica cuando MetodoPago == PagoEnEntrega. Aclara al local/repartidor cómo se
+// va a cobrar en el momento.
+public enum SubMetodoPagoEntrega
+{
+    Efectivo,
+    CuentaDNI_QR,
+    Transferencia,
 }
 
 public enum MetodoEntrega
@@ -38,11 +47,10 @@ public class Pedido
 
     public int? DireccionId { get; set; }
     public MetodoPago MetodoPago { get; set; }
+    public SubMetodoPagoEntrega? SubMetodoPagoEntrega { get; set; }
     public DateTime? ExpiraReservaEn { get; set; } // solo aplica si MetodoPago == Online
     public string? MercadoPagoPreferenceId { get; set; }
     public string? MercadoPagoPaymentId { get; set; }
-    // Se guarda junto con el PreferenceId al crear el pedido Online, para poder
-    // devolverlo en cualquier consulta futura (GET /pedidos/{id}), no solo en el POST inicial.
     public string? MercadoPagoInitPoint { get; set; }
     public Direccion? Direccion { get; set; }
 
@@ -50,10 +58,12 @@ public class Pedido
     public EstadoPedido Estado { get; set; } = EstadoPedido.PendientePago;
     public MetodoEntrega MetodoEntrega { get; set; }
     public OrigenPedido Origen { get; set; } = OrigenPedido.Web;
-    // Costo de envío ya sumado dentro de Total, pero guardado aparte para mostrar el
-    // desglose (subtotal + envío) en el comprobante y en el panel admin.
     public decimal CostoEnvio { get; set; }
     public decimal Total { get; set; }
+
+    // Llave de acceso público para consultar el pedido sin login (GET /pedidos/seguimiento/{token}).
+    // Se genera siempre, para todos los pedidos, no solo invitados.
+    public Guid TrackingToken { get; set; } = Guid.NewGuid();
 
     public ICollection<DetallePedido> Detalles { get; set; } = new List<DetallePedido>();
 }

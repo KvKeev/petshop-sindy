@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SindyPetshop.Application.DTOs;
+using SindyPetshop.Application.Validaciones;
 using SindyPetshop.Domain.Entities;
 using SindyPetshop.Domain.Interfaces;
 
@@ -32,8 +33,9 @@ public class PedidoService
         _logger = logger;
     }
 
+    // clienteIdAutenticado viene null cuando el request no trae JWT (compra como invitado)
     public async Task<(ResultadoCrearPedido Resultado, string? Detalle, PedidoDto? Pedido)> CrearAsync(
-        int clienteId, CrearPedidoDto dto)
+        int? clienteIdAutenticado, CrearPedidoDto dto)
     {
         if (dto.Items is null || !dto.Items.Any())
             return (ResultadoCrearPedido.CarritoVacio, null, null);
@@ -44,30 +46,96 @@ public class PedidoService
         if (!Enum.TryParse<MetodoPago>(dto.MetodoPago, ignoreCase: true, out var metodoPago))
             return (ResultadoCrearPedido.MetodoInvalido, "MetodoPago inválido. Valores: Online, PagoEnEntrega", null);
 
-        int? direccionId = null;
-        Cliente? cliente = null;
-        Direccion? direccionSeleccionada = null;
+        SubMetodoPagoEntrega? subMetodo = null;
+        if (metodoPago == MetodoPago.PagoEnEntrega)
+        {
+            if (string.IsNullOrWhiteSpace(dto.SubMetodoPagoEntrega))
+                return (ResultadoCrearPedido.SubMetodoPagoRequerido,
+                    "Falta indicar el submétodo de pago en entrega (Efectivo, CuentaDNI_QR o Transferencia)", null);
+
+            if (!Enum.TryParse<SubMetodoPagoEntrega>(dto.SubMetodoPagoEntrega, ignoreCase: true, out var subMetodoParseado))
+                return (ResultadoCrearPedido.SubMetodoPagoInvalido,
+                    "SubMetodoPagoEntrega inválido. Valores: Efectivo, CuentaDNI_QR, Transferencia", null);
+
+            subMetodo = subMetodoParseado;
+        }
+
+        // --- Resolución del cliente: logueado (JWT) o invitado (por email) ---
+        Cliente? cliente;
+        if (clienteIdAutenticado.HasValue)
+        {
+            cliente = await _clienteRepository.GetByIdAsync(clienteIdAutenticado.Value);
+            if (cliente is null)
+                return (ResultadoCrearPedido.ClienteInvalido, "El cliente indicado no existe", null);
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(dto.NombreInvitado)
+                || string.IsNullOrWhiteSpace(dto.EmailInvitado)
+                || string.IsNullOrWhiteSpace(dto.TelefonoInvitado))
+                return (ResultadoCrearPedido.DatosInvitadoIncompletos,
+                    "Para comprar sin cuenta hacen falta nombre, email y teléfono", null);
+
+            if (!NombreValidator.EsValido(dto.NombreInvitado))
+                return (ResultadoCrearPedido.DatosInvitadoIncompletos,
+                    "El nombre solo puede contener letras, números y espacios", null);
+
+            if (!EmailValidator.EsValido(dto.EmailInvitado))
+                return (ResultadoCrearPedido.DatosInvitadoIncompletos, "El email indicado no es válido", null);
+
+            var emailNormalizado = dto.EmailInvitado.Trim();
+            cliente = await _clienteRepository.GetByEmailAsync(emailNormalizado);
+
+            if (cliente is null)
+            {
+                // Primera compra con este email: se crea la cuenta con lo que ofreció acá,
+                // sin contraseña - queda lista para activarse más adelante (Parte 2, magic link).
+                cliente = new Cliente
+                {
+                    Nombre = dto.NombreInvitado.Trim(),
+                    Email = emailNormalizado,
+                    Telefono = dto.TelefonoInvitado.Trim(),
+                    PasswordHash = null,
+                    Rol = RolUsuario.Cliente,
+                };
+                await _clienteRepository.AddAsync(cliente);
+                await _clienteRepository.SaveChangesAsync();
+            }
+            else if (string.IsNullOrWhiteSpace(cliente.Telefono))
+            {
+                // El mail ya es de un cliente existente - solo completamos el teléfono si
+                // no tenía uno cargado, nunca pisamos un dato que el dueño real ya haya puesto.
+                cliente.Telefono = dto.TelefonoInvitado.Trim();
+                _clienteRepository.Update(cliente);
+            }
+        }
+
+        Direccion? direccionNueva = null;
         if (metodoEntrega == MetodoEntrega.Envio)
         {
-            cliente = await _clienteRepository.GetConDireccionesAsync(clienteId);
-            var direccionValida = cliente?.Direcciones.Any(d => d.Id == dto.DireccionId) ?? false;
+            if (dto.Direccion is null
+                || string.IsNullOrWhiteSpace(dto.Direccion.Calle)
+                || string.IsNullOrWhiteSpace(dto.Direccion.Ciudad))
+                return (ResultadoCrearPedido.DireccionRequerida, "Falta indicar calle y ciudad de entrega", null);
 
-            if (dto.DireccionId is null)
-                return (ResultadoCrearPedido.DireccionRequerida, null, null);
-
-            if (!direccionValida)
-                return (ResultadoCrearPedido.DireccionInvalida, null, null);
-
-            direccionId = dto.DireccionId;
-            direccionSeleccionada = cliente!.Direcciones.First(d => d.Id == dto.DireccionId);
+            // Siempre se crea una dirección nueva - un mismo cliente puede pedir a
+            // distintas direcciones en cada compra (regalo, casa de un familiar, etc.).
+            direccionNueva = new Direccion
+            {
+                ClienteId = cliente.Id,
+                Calle = dto.Direccion.Calle.Trim(),
+                Ciudad = dto.Direccion.Ciudad.Trim(),
+                PisoDepto = string.IsNullOrWhiteSpace(dto.Direccion.PisoDepto) ? null : dto.Direccion.PisoDepto.Trim(),
+            };
         }
 
         var pedido = new Pedido
         {
-            ClienteId = clienteId,
-            DireccionId = direccionId,
+            ClienteId = cliente.Id,
+            Direccion = direccionNueva,
             MetodoEntrega = metodoEntrega,
             MetodoPago = metodoPago,
+            SubMetodoPagoEntrega = subMetodo,
             Origen = OrigenPedido.Web,
         };
 
@@ -112,12 +180,10 @@ public class PedidoService
             }
         }
 
-        var costoEnvio = _costoEnvioService.Calcular(metodoEntrega, direccionSeleccionada);
+        var costoEnvio = _costoEnvioService.Calcular(metodoEntrega, direccionNueva);
         pedido.CostoEnvio = costoEnvio;
         pedido.Total = total + costoEnvio;
 
-        // Si hay costo de envío, se agrega como ítem aparte de la preferencia de MercadoPago -
-        // si no, el cliente pagaría online solo el subtotal de productos y el envío quedaría sin cobrar.
         if (costoEnvio > 0)
             itemsParaPreferencia.Add(("Costo de envío", 1, costoEnvio));
 
@@ -134,14 +200,10 @@ public class PedidoService
         await _pedidoRepository.AddAsync(pedido);
         await _pedidoRepository.SaveChangesAsync();
 
-        // Recién con el pedido ya guardado (tiene Id real) se genera la preferencia de pago.
-        // Si MercadoPago falla acá, el pedido igual queda creado (con stock reservado) -
-        // simplemente no va a tener MercadoPagoInitPoint, y se puede reintentar más adelante si hace falta.
         if (metodoPago == MetodoPago.Online)
         {
-            cliente ??= await _clienteRepository.GetByIdAsync(clienteId);
             var preferencia = await _mercadoPagoService.CrearPreferenciaAsync(
-                pedido.Id, cliente?.Email ?? "", itemsParaPreferencia);
+                pedido.Id, cliente.Email, itemsParaPreferencia);
 
             if (preferencia is not null)
             {
@@ -179,6 +241,13 @@ public class PedidoService
         return (ResultadoConsulta.Ok, MapearDto(pedido));
     }
 
+    // Consulta pública sin login, vía el token no adivinable del pedido.
+    public async Task<PedidoDto?> GetPorTrackingTokenAsync(Guid trackingToken)
+    {
+        var pedido = await _pedidoRepository.GetByTrackingTokenAsync(trackingToken);
+        return pedido is null ? null : MapearDto(pedido);
+    }
+
     private static PedidoDto MapearDto(Pedido pedido)
     {
         var detalles = pedido.Detalles.Select(d => new DetallePedidoDto(
@@ -188,18 +257,25 @@ public class PedidoService
             d.PrecioUnitario
         ));
 
+        var direccion = pedido.Direccion is null
+            ? null
+            : new DireccionPedidoDto(pedido.Direccion.Calle, pedido.Direccion.Ciudad, pedido.Direccion.PisoDepto);
+
         return new PedidoDto(
             pedido.Id,
             pedido.Fecha,
             pedido.Estado.ToString(),
             pedido.MetodoEntrega.ToString(),
             pedido.MetodoPago.ToString(),
+            pedido.SubMetodoPagoEntrega?.ToString(),
             pedido.Origen.ToString(),
             pedido.CostoEnvio,
             pedido.Total,
             pedido.ExpiraReservaEn,
             detalles,
-            pedido.MercadoPagoInitPoint
+            pedido.MercadoPagoInitPoint,
+            pedido.TrackingToken,
+            direccion
         );
     }
 }

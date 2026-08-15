@@ -7,6 +7,7 @@ public interface IPedidoRepository : IRepository<Pedido>
     Task<Pedido?> GetConDetallesAsync(int pedidoId);
     Task<IEnumerable<Pedido>> GetByClienteIdAsync(int clienteId);
     Task<IEnumerable<Pedido>> GetPendientesVencidosAsync(DateTime ahora);
+    Task<Pedido?> GetByTrackingTokenAsync(Guid trackingToken);
 
     // Suma las cantidades reservadas (pedidos PendientePago no vencidos) para una variante
     Task<int> GetCantidadReservadaAsync(int varianteId);

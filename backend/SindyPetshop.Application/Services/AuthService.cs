@@ -44,6 +44,8 @@ public class AuthService
         var cliente = await _clienteRepository.GetByEmailAsync(dto.Email);
         if (cliente is null) return null;
 
+        if (cliente.PasswordHash is null) return null; // cuenta creada por compra de invitado, todavía sin contraseña
+
         var passwordValida = BCrypt.Net.BCrypt.Verify(dto.Password, cliente.PasswordHash);
         if (!passwordValida) return null;
 

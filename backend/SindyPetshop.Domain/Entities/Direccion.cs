@@ -8,4 +8,5 @@ public class Direccion
 
     public string Calle { get; set; } = string.Empty;
     public string Ciudad { get; set; } = string.Empty;
+    public string? PisoDepto { get; set; }
 }

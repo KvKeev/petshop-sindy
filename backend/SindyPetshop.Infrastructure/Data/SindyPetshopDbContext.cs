@@ -40,15 +40,17 @@ public class SindyPetshopDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
-        // --- Pedido ---
+// --- Pedido ---
         modelBuilder.Entity<Pedido>(entity =>
         {
             entity.Property(p => p.Estado).HasConversion<string>();
             entity.Property(p => p.MetodoEntrega).HasConversion<string>();
             entity.Property(p => p.Origen).HasConversion<string>();
             entity.Property(p => p.MetodoPago).HasConversion<string>();
+            entity.Property(p => p.SubMetodoPagoEntrega).HasConversion<string>();
             entity.Property(p => p.Total).HasPrecision(10, 2);
             entity.Property(p => p.CostoEnvio).HasPrecision(10, 2);
+            entity.HasIndex(p => p.TrackingToken).IsUnique();
 
             entity
                 .HasOne(p => p.Direccion)

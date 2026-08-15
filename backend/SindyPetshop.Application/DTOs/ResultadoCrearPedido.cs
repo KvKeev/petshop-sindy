@@ -8,5 +8,8 @@ public enum ResultadoCrearPedido
     VarianteInvalida,
     StockInsuficiente,
     DireccionRequerida,
-    DireccionInvalida
+    ClienteInvalido,
+    DatosInvitadoIncompletos,
+    SubMetodoPagoRequerido,
+    SubMetodoPagoInvalido,
 }

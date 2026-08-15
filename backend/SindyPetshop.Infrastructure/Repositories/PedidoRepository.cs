@@ -103,4 +103,14 @@ public class PedidoRepository : RepositoryBase<Pedido>, IPedidoRepository
 
         return (items, total);
     }
+    public async Task<Pedido?> GetByTrackingTokenAsync(Guid trackingToken)
+    {
+        return await _dbSet
+            .Include(p => p.Cliente)
+            .Include(p => p.Detalles)
+                .ThenInclude(d => d.Variante!)
+                    .ThenInclude(v => v.Producto)
+            .Include(p => p.Direccion)
+            .FirstOrDefaultAsync(p => p.TrackingToken == trackingToken);
+    }
 }
