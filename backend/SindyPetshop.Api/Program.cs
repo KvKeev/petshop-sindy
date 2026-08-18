@@ -34,6 +34,7 @@ builder.Services.AddHostedService<LiberacionReservasBackgroundService>();
 builder.Services.AddScoped<AdminProductoService>();
 builder.Services.AddScoped<AdminPedidoService>();
 builder.Services.AddScoped<ClientePerfilService>();
+builder.Services.AddScoped<AdminAnalyticsService>();
 builder.Services.AddSingleton<IMercadoPagoService>(_ =>
 {
     var accessToken = builder.Configuration["MercadoPago:AccessToken"] ?? "";
