@@ -16,7 +16,7 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
-[HttpPost("registro")]
+    [HttpPost("registro")]
     public async Task<IActionResult> Registro(RegistroDto dto)
     {
         var (resultado, respuesta) = await _authService.RegistrarAsync(dto);
@@ -25,6 +25,10 @@ public class AuthController : ControllerBase
         {
             ResultadoRegistro.NombreInvalido => BadRequest(new { mensaje = "El nombre solo puede contener letras, números y espacios" }),
             ResultadoRegistro.EmailDuplicado => Conflict(new { mensaje = "El email ya está registrado" }),
+            ResultadoRegistro.CuentaInvitadaDetectada => Ok(new
+            {
+                mensaje = "¡Ya teníamos compras registradas con este email! Te enviamos un correo para activar tu cuenta."
+            }),
             _ => Ok(respuesta),
         };
     }
@@ -38,5 +42,21 @@ public class AuthController : ControllerBase
             return Unauthorized(new { mensaje = "Credenciales inválidas" });
 
         return Ok(resultado);
+    }
+
+    [HttpPost("activar-cuenta")]
+    public async Task<IActionResult> ActivarCuenta(ActivarCuentaDto dto)
+    {
+        var (resultado, respuesta) = await _authService.ActivarCuentaAsync(dto);
+
+        return resultado switch
+        {
+            ResultadoActivacion.TokenInvalidoOVencido => BadRequest(new
+            {
+                mensaje = "El link de activación no es válido o venció. Volvé a intentar registrarte con el mismo email para recibir uno nuevo."
+            }),
+            ResultadoActivacion.PasswordInvalida => BadRequest(new { mensaje = "La contraseña debe tener al menos 6 caracteres" }),
+            _ => Ok(respuesta),
+        };
     }
 }

@@ -13,6 +13,10 @@ public class ClienteRepository : RepositoryBase<Cliente>, IClienteRepository
     {
         return await _dbSet.FirstOrDefaultAsync(c => c.Email == email);
     }
+        public async Task<Cliente?> GetByActivacionTokenAsync(Guid token)
+    {
+        return await _dbSet.FirstOrDefaultAsync(c => c.ActivacionToken == token);
+    }
     public async Task<Cliente?> GetConDireccionesAsync(int clienteId)
     {
         return await _dbSet

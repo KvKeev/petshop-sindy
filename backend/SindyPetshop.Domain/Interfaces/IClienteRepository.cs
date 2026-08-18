@@ -13,4 +13,5 @@ public interface IClienteRepository : IRepository<Cliente>
 
     //detalle completo para la ficha de cliente en el panel admin
     Task<Cliente?> GetConDetalleCompletoAsync(int clienteId);
+    Task<Cliente?> GetByActivacionTokenAsync(Guid token);
 }

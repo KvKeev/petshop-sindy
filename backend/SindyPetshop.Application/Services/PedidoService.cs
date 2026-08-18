@@ -13,6 +13,7 @@ public class PedidoService
     private readonly IClienteRepository _clienteRepository;
     private readonly IMercadoPagoService _mercadoPagoService;
     private readonly ICostoEnvioService _costoEnvioService;
+    private readonly IEmailService _emailService;
     private readonly ILogger<PedidoService> _logger;
 
     private const int MinutosExpiracionReserva = 15;
@@ -23,6 +24,7 @@ public class PedidoService
         IClienteRepository clienteRepository,
         IMercadoPagoService mercadoPagoService,
         ICostoEnvioService costoEnvioService,
+        IEmailService emailService,
         ILogger<PedidoService> logger)
     {
         _pedidoRepository = pedidoRepository;
@@ -30,6 +32,7 @@ public class PedidoService
         _clienteRepository = clienteRepository;
         _mercadoPagoService = mercadoPagoService;
         _costoEnvioService = costoEnvioService;
+        _emailService = emailService;
         _logger = logger;
     }
 
@@ -219,6 +222,12 @@ public class PedidoService
         }
 
         var pedidoConDetalles = await _pedidoRepository.GetConDetallesAsync(pedido.Id);
+
+        // El mail de confirmación se manda siempre, logueado o invitado. Si falla, no
+        // afecta la compra - ResendEmailService se traga cualquier error internamente.
+        await _emailService.EnviarConfirmacionPedidoAsync(
+            cliente.Email, cliente.Nombre, pedido.Id, pedido.Total, pedido.TrackingToken, pedido.MercadoPagoInitPoint);
+
         return (ResultadoCrearPedido.Ok, null, MapearDto(pedidoConDetalles!));
     }
 

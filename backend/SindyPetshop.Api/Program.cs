@@ -53,6 +53,17 @@ builder.Services.AddSingleton<ICostoEnvioService>(_ =>
     var tarifaPlana = builder.Configuration.GetValue<decimal?>("Envio:TarifaPlana") ?? 0m;
     return new TarifaPlanaCostoEnvioService(tarifaPlana);
 });
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IEmailService>(sp =>
+{
+    var apiKey = builder.Configuration["Resend:ApiKey"] ?? "";
+    var fromEmail = builder.Configuration["Resend:FromEmail"] ?? "onboarding@resend.dev";
+    var fromNombre = builder.Configuration["Resend:FromNombre"] ?? "Petshop Sindy";
+    var frontendBaseUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var logger = sp.GetRequiredService<ILogger<ResendEmailService>>();
+    return new ResendEmailService(httpClientFactory.CreateClient(), apiKey, fromEmail, fromNombre, frontendBaseUrl, logger);
+});
 
 var jwtSecret = builder.Configuration["Jwt:Secret"]!;
 builder
