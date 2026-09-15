@@ -116,6 +116,19 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 
+const string PoliticaCors = "FrontendPolicy";
+var frontendBaseUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+
+builder.Services.AddCors(options =>
+{
+
+    options.AddPolicy(PoliticaCors, policy =>
+    {
+        policy.WithOrigins(frontendBaseUrl).AllowAnyHeader().AllowAnyMethod();
+    });
+});
+
+
 var app = builder.Build();
 
 // Crea la estructura de carpetas de wwwroot si no existe (uploads y avatares de la galería)
@@ -141,9 +154,12 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(); // UI interactiva en /scalar/v1
 }
 
+
+
 app.UseRateLimiter();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseCors(PoliticaCors);
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
