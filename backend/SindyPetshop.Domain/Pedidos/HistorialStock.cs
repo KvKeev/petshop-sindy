@@ -19,5 +19,5 @@ public class HistorialStock
     public TipoMovimientoStock TipoMovimiento { get; set; }
     public int Cantidad { get; set; }
     public DateTime Fecha { get; set; } = DateTime.UtcNow;
-    public string? Detalle { get; set; } // NUEVO: motivo opcional, se usa sobre todo en AjusteManual
+    public string? Detalle { get; set; } // Motivo opcional del movimiento, utilizado principalmente en AjusteManual
 }

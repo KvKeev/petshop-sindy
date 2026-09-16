@@ -14,10 +14,8 @@ using SindyPetshop.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddOpenApi();
 
-// Registra el DbContext, indicándole que use SQLite con la connection string de appsettings.json
 builder.Services.AddDbContext<SindyPetshopDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
@@ -49,6 +47,7 @@ builder.Services.AddSingleton<IFileStorageService>(_ =>
     return new FileStorageService(wwwRootPath);
 });
 builder.Services.AddScoped<AdminClienteService>();
+// Registrado contra ICostoEnvioService para permitir reemplazar la tarifa plana por cálculo por tramos/distancia sin tocar el resto del sistema.
 builder.Services.AddSingleton<ICostoEnvioService>(_ =>
 {
     var tarifaPlana = builder.Configuration.GetValue<decimal?>("Envio:TarifaPlana") ?? 0m;
@@ -147,7 +146,6 @@ if (app.Environment.IsDevelopment())
     SindyPetshop.Infrastructure.Data.Seed.DataSeeder.Seed(context);
 }
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

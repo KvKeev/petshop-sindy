@@ -13,7 +13,7 @@ public enum ResultadoRegistro
     Ok,
     EmailDuplicado,
     NombreInvalido,
-    // Nuevo: el email ya existía con PasswordHash null (cuenta creada por compra de
+    // El email ya existía con PasswordHash null (cuenta creada por compra de
     // invitado) - no se rechaza, se reenvía un link de activación por mail.
     CuentaInvitadaDetectada,
 }

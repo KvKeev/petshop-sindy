@@ -2,9 +2,9 @@ using SindyPetshop.Application.DTOs;
 
 namespace SindyPetshop.Application.Avatares;
 
-// Catálogo fijo. Los archivos de imagen reales deben existir en:
-// wwwroot/avatares/clientes/{1..6}.png
-// wwwroot/avatares/mascotas/{Tipo}/{1..3}.png  (Tipo: Perro, Gato, Ave, Conejo, Hamster, Otro)
+// Catálogo de avatares predefinidos estático en código (no requiere persistencia en BD ni gestión por panel Admin).
+// Mapea a archivos físicos en wwwroot/avatares/clientes/{1..6}.png y wwwroot/avatares/mascotas/{Tipo}/{1..3}.png.
+// Los métodos EsValidoClienteAvatar y EsValidoMascotaAvatar previenen que se almacene un avatarId arbitrario o inexistente.
 public static class AvatarCatalog
 {
     public static readonly List<AvatarDto> Clientes = Enumerable.Range(1, 6)

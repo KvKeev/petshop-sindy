@@ -3,6 +3,7 @@ using SindyPetshop.Application.Services;
 
 namespace SindyPetshop.Api.Controllers;
 
+// Catálogo público navegable sin autenticación ([Authorize] omitido intencionalmente). Los usuarios pueden explorar productos y precios sin iniciar sesión; la cuenta o datos de invitado se solicitan recién en el checkout.
 [ApiController]
 [Route("api/v1/[controller]")]
 public class ProductosController : ControllerBase

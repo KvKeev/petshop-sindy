@@ -109,7 +109,7 @@ public async Task<(ResultadoCrearMascota Resultado, MascotaDto? Dto)> CrearAsync
         return (ResultadoConsulta.Ok, null, MapearDto(actualizada!));
     }
 
-    // NUEVO: sube una foto propia para la mascota (dueño o Admin)
+    // Sube una foto propia para la mascota (requiere ser dueño o Admin)
     public async Task<(ResultadoSubirFotoMascota Resultado, MascotaDto? Dto)> SubirFotoAsync(
         int mascotaId, int clienteIdSolicitante, bool esAdmin, Stream contenido, long tamanioBytes, string nombreArchivo)
     {
@@ -133,7 +133,7 @@ public async Task<(ResultadoCrearMascota Resultado, MascotaDto? Dto)> CrearAsync
         return (ResultadoSubirFotoMascota.Ok, MapearDto(mascota));
     }
 
-    // NUEVO: elige un avatar de la galería, filtrado por el Tipo de esta mascota (dueño o Admin)
+    // Asigna un avatar de la galería predefinida, validando contra el tipo de mascota
     public async Task<(ResultadoSeleccionarAvatarMascota Resultado, MascotaDto? Dto)> SeleccionarAvatarAsync(
         int mascotaId, int clienteIdSolicitante, bool esAdmin, SeleccionarAvatarMascotaDto dto)
     {
@@ -157,7 +157,7 @@ public async Task<(ResultadoCrearMascota Resultado, MascotaDto? Dto)> CrearAsync
         return (ResultadoSeleccionarAvatarMascota.Ok, MapearDto(mascota));
     }
 
-    // NUEVO: lista los avatares disponibles para un tipo de animal (galería)
+    // Obtiene el catálogo de avatares disponibles para el tipo de mascota
     public List<AvatarDto> GetAvataresPorTipo(string tipo) => AvatarCatalog.GetMascotaAvatares(tipo);
 
     private static MascotaDto MapearDto(Mascota m) => new(

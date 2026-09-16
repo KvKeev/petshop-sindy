@@ -65,9 +65,8 @@ public class MercadoPagoWebhookController : ControllerBase
         if (!int.TryParse(externalReference, out var pedidoId))
             return Ok();
 
-        // Reutiliza la máquina de estados + el fix de stock de la Parte 1.
-        // Es idempotente: si el pedido ya no está en PendientePago (webhook duplicado), CambiarEstadoAsync
-        // devuelve Exito=false silenciosamente acá - no rompemos nada ni duplicamos el descuento de stock.
+        // Reutiliza la máquina de estados del pedido. Es una operación idempotente: si el pedido ya no está en PendientePago (webhook duplicado),
+        // CambiarEstadoAsync devuelve Exito=false silenciosamente acá - no rompemos nada ni duplicamos el descuento de stock.
         await _adminPedidoService.CambiarEstadoAsync(pedidoId, "Pagado");
 
         return Ok();

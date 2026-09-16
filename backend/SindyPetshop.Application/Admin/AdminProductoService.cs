@@ -9,8 +9,7 @@ namespace SindyPetshop.Application.Services;
 public class AdminProductoService
 {
     private readonly IProductoRepository _productoRepository;
-    private readonly SindyPetshopDbContext _context; // solo para validar CategoriaId — mismo criterio
-                                                       // ya usado en CategoriasController (lectura trivial)
+    private readonly SindyPetshopDbContext _context; // Consulta directa a DbContext para validación de CategoriaId.
 
     public AdminProductoService(IProductoRepository productoRepository, SindyPetshopDbContext context)
     {
@@ -108,7 +107,7 @@ public class AdminProductoService
         if (producto is null) return (ResultadoConsulta.NoEncontrada, null, null);
 
         if (dto.Precio <= 0)
-            return (ResultadoConsulta.Ok, "El precio debe ser mayor a cero", null); // ver nota abajo
+            return (ResultadoConsulta.Ok, "El precio debe ser mayor a cero", null);
 
         producto.Variantes.Add(new VarianteProducto
         {

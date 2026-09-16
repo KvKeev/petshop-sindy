@@ -24,7 +24,7 @@ public class SindyPetshopDbContext : DbContext
         // --- Cliente ---
         modelBuilder.Entity<Cliente>(entity =>
         {
-            entity.HasIndex(c => c.Email).IsUnique(); // no puede haber dos clientes con el mismo email
+            entity.HasIndex(c => c.Email).IsUnique();
             entity.Property(c => c.Rol).HasConversion<string>();
         });
         modelBuilder.Entity<Mascota>(entity =>
@@ -71,7 +71,7 @@ public class SindyPetshopDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity
-                .HasOne(d => d.Mascota) // <- nuevo
+                .HasOne(d => d.Mascota)
                 .WithMany(m => m.ComprasAsociadas)
                 .HasForeignKey(d => d.MascotaId)
                 .OnDelete(DeleteBehavior.SetNull);

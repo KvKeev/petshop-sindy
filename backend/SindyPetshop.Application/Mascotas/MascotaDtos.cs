@@ -13,7 +13,7 @@ public record MascotaDto(
 
 public record CrearMascotaDto(string Nombre, string Tipo);
 
-// NUEVO: para cargar/editar el alimento favorito
+// DTO para cargar/editar el alimento favorito
 public record ActualizarAlimentoFavoritoDto(int? ProductoId, string? Descripcion);
 
 // Para responder "¿qué come esta mascota?" (historial REAL de compras, sin tocar)
@@ -35,13 +35,13 @@ public record MascotaConHistorialDto(
     IEnumerable<CompraMascotaDto> HistorialCompras
 );
 
-// NUEVO: foto/avatar de mascota
+// DTO para selección de avatar de mascota
 public record SeleccionarAvatarMascotaDto(string AvatarId);
 
 public enum ResultadoSubirFotoMascota { Ok, NoEncontrada, NoAutorizado, ArchivoInvalido }
 public enum ResultadoSeleccionarAvatarMascota { Ok, NoEncontrada, NoAutorizado, AvatarInvalido }
 
-// NUEVO: distingue el motivo de fallo al crear mascota (antes solo existía tipo inválido)
+// Distingue el motivo de fallo al crear mascota (tipo o nombre inválido)
 public enum ResultadoCrearMascota
 {
     Ok,

@@ -8,7 +8,7 @@ namespace SindyPetshop.Application.Services;
 public class AdminPedidoService
 {
     private readonly IPedidoRepository _pedidoRepository;
-    private readonly SindyPetshopDbContext _context; // solo para devolver stock al cancelar
+    private readonly SindyPetshopDbContext _context; // Acceso a DbContext para ajustar inventario físico al confirmar o cancelar pedidos.
 
     // Estados en los que YA se descontó StockFisico (no reserva) — si se cancela desde acá, hay que devolver
     private static readonly HashSet<EstadoPedido> EstadosConStockDescontado = new()
@@ -65,9 +65,7 @@ public class AdminPedidoService
                 null
             );
 
-        // FIX: pago Online confirmado -> recién acá se descuenta StockFisico de verdad.
-        // Hasta ahora el stock solo estaba reservado (ver PedidoService.CrearAsync), nunca se
-        // convertía en descuento físico real al pasar a Pagado.
+        // Transición a Pagado en pago Online: descuenta el stock físico real (previamente reservado en la creación).
         if (nuevoEstado == EstadoPedido.Pagado && pedido.MetodoPago == MetodoPago.Online)
         {
             foreach (var detalle in pedido.Detalles)

@@ -17,6 +17,7 @@ public class TokenService : ITokenService
         _configuration = configuration;
     }
 
+    // Genera un JWT firmado que incluye los claims de ID, email y rol del cliente, con expiración configurable.
     public string GenerarToken(Cliente cliente)
     {
         var secret = _configuration["Jwt:Secret"]!;

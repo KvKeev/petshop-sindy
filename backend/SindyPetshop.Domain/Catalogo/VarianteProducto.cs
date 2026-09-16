@@ -15,6 +15,7 @@ public class VarianteProducto
 
     // --- Stock físico vs. reservado para mostrador ---
     public int StockFisico { get; set; }
+    // Buffer reservado para ventas en mostrador físico (que no se descuentan en tiempo real), previniendo agotamiento de inventario físico por pedidos web.
     public int StockMinimoWeb { get; set; }
 
     // Propiedad calculada: no ocupa columna en la base de datos (se ignora en EF Core)

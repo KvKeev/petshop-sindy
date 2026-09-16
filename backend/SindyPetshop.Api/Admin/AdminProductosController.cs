@@ -7,7 +7,7 @@ namespace SindyPetshop.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/admin/productos")]
-[Authorize(Roles = "Admin")] // TODO el controller es admin-only, sin excepciones
+[Authorize(Roles = "Admin")] // Acceso restringido exclusivamente a usuarios con rol Admin.
 public class AdminProductosController : ControllerBase
 {
     private readonly AdminProductoService _adminProductoService;

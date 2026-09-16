@@ -5,6 +5,7 @@ using SindyPetshop.Infrastructure.Data;
 
 namespace SindyPetshop.Api.Controllers;
 
+// Controller público ([Authorize] omitido intencionalmente): permite a navegantes e invitados listar categorías para filtrar el catálogo sin necesidad de iniciar sesión.
 [ApiController]
 [Route("api/v1/[controller]")]
 public class CategoriasController : ControllerBase

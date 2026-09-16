@@ -43,6 +43,7 @@ public class PedidoRepository : RepositoryBase<Pedido>, IPedidoRepository
             .ToListAsync();
     }
 
+    // Suma las cantidades reservadas (pedidos PendientePago no vencidos) para una variante
     public async Task<int> GetCantidadReservadaAsync(int varianteId)
     {
         var ahora = DateTime.UtcNow;
